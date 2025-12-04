@@ -1,5 +1,5 @@
 // Script to seed puzzles from public folder
-// Puzzle files should be named: answer_MM.DD.YYYY.png
+// Puzzle files should be named: MM.DD.YYYY_answer.png
 // Run with: node scripts/seed-puzzles.js
 // Make sure your .env file is configured
 
@@ -19,19 +19,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Function to parse filename: answer_MM.DD.YYYY.png
+// Function to parse filename: MM.DD.YYYY_answer.png
 function parsePuzzleFilename(filename) {
   // Remove .png extension
   const nameWithoutExt = filename.replace(/\.png$/i, '');
   
-  // Split by last underscore to separate answer from date
-  const lastUnderscoreIndex = nameWithoutExt.lastIndexOf('_');
-  if (lastUnderscoreIndex === -1) {
+  // Split by first underscore to separate date from answer
+  const firstUnderscoreIndex = nameWithoutExt.indexOf('_');
+  if (firstUnderscoreIndex === -1) {
     return null;
   }
   
-  const answer = nameWithoutExt.substring(0, lastUnderscoreIndex);
-  const dateStr = nameWithoutExt.substring(lastUnderscoreIndex + 1);
+  const dateStr = nameWithoutExt.substring(0, firstUnderscoreIndex);
+  const answer = nameWithoutExt.substring(firstUnderscoreIndex + 1);
   
   // Parse date from MM.DD.YYYY to YYYY-MM-DD
   const dateParts = dateStr.split('.');
@@ -65,7 +65,7 @@ async function seedPuzzles() {
   
   if (puzzles.length === 0) {
     console.log('No puzzle files found in public folder.');
-    console.log('Expected format: answer_MM.DD.YYYY.png (e.g., apple_12.25.2025.png)');
+    console.log('Expected format: MM.DD.YYYY_answer.png (e.g., 12.25.2025_apple.png)');
     return;
   }
   
