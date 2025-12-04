@@ -60,9 +60,89 @@ function Leaderboard() {
         // Get correct submissions
         const correctSubmissions = (allSubmissionsData || []).filter((s: Submission) => s.is_correct);
         
-        // Sort by time (fastest first)
-        const sortedByTime = [...correctSubmissions].sort((a: Submission, b: Submission) => a.time_ms - b.time_ms);
-        setSubmissions(sortedByTime.slice(0, 100));
+        // Calculate streaks for each user
+        const today = new Date().toISOString().split('T')[0];
+        const { data: allPuzzles, error: puzzlesError } = await supabase
+          .from('puzzles')
+          .select('id, date')
+          .order('date', { ascending: false });
+
+        if (!puzzlesError && allPuzzles) {
+          const archivePuzzleIds = new Set(
+            allPuzzles.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id)
+          );
+
+          const dailyPuzzles = allPuzzles.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id));
+          dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
+
+          const { data: allDailySubmissions, error: dailySubsError } = await supabase
+            .from('submissions')
+            .select('anon_id, puzzle_id, is_correct, username, created_at')
+            .order('created_at', { ascending: false });
+
+          if (!dailySubsError && allDailySubmissions) {
+            const dailySubs = (allDailySubmissions || []).filter(
+              (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
+            );
+
+            const userSubmissions = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
+            
+            dailySubs.forEach((s: Submission) => {
+              if (!s.anon_id) return;
+              
+              if (!userSubmissions.has(s.anon_id)) {
+                userSubmissions.set(s.anon_id, {
+                  username: s.username || null,
+                  submissions: new Map(),
+                });
+              }
+              
+              const userData = userSubmissions.get(s.anon_id)!;
+              if (!userData.submissions.has(s.puzzle_id)) {
+                userData.submissions.set(s.puzzle_id, s.is_correct);
+              }
+              if (s.username) {
+                userData.username = s.username;
+              }
+            });
+
+            const streakMap = new Map<string, number>();
+            userSubmissions.forEach((userData, anon_id) => {
+              let currentStreak = 0;
+              
+              for (const puzzle of dailyPuzzles) {
+                const result = userData.submissions.get(puzzle.id);
+                if (result === true) {
+                  currentStreak++;
+                } else if (result === false) {
+                  break;
+                } else {
+                  break;
+                }
+              }
+              
+              streakMap.set(anon_id, currentStreak);
+            });
+
+            // Add streak to each submission
+            const submissionsWithStreak = correctSubmissions.map((s: Submission) => ({
+              ...s,
+              streak: streakMap.get(s.anon_id || '') || 0,
+            }));
+
+            // Sort by time (fastest first)
+            const sortedByTime = [...submissionsWithStreak].sort((a: Submission & { streak: number }, b: Submission & { streak: number }) => a.time_ms - b.time_ms);
+            setSubmissions(sortedByTime.slice(0, 100) as Submission[]);
+          } else {
+            // Fallback if streak calculation fails
+            const sortedByTime = [...correctSubmissions].sort((a: Submission, b: Submission) => a.time_ms - b.time_ms);
+            setSubmissions(sortedByTime.slice(0, 100));
+          }
+        } else {
+          // Fallback if puzzle fetch fails
+          const sortedByTime = [...correctSubmissions].sort((a: Submission, b: Submission) => a.time_ms - b.time_ms);
+          setSubmissions(sortedByTime.slice(0, 100));
+        }
 
         // Get incorrect submissions (ordered by submission time, most recent first)
         const incorrectSubs = (allSubmissionsData || []).filter((s: Submission) => !s.is_correct);

@@ -7,26 +7,6 @@ interface PuzzleWithStats extends Puzzle {
   successRate: number | null;
   averageTime: number | null;
   averageGuesses: number | null;
-  isJulia?: boolean;
-}
-
-// Function to check if a puzzle is a "julia" puzzle
-// You can customize this logic - currently checks if answer contains "julia" or specific dates
-function isJuliaPuzzle(puzzle: Puzzle): boolean {
-  // Check if answer contains "julia" (case insensitive)
-  if (puzzle.answer.toLowerCase().includes('julia')) {
-    return true;
-  }
-  
-  // Or check specific dates - add dates here if needed
-  const juliaDates = [
-    '2025-12-10', // christmas tree
-    '2025-12-11', // hamilton
-    '2025-12-13', // winston churchill
-  ];
-  
-  const puzzleDate = puzzle.date.split('T')[0];
-  return juliaDates.includes(puzzleDate);
 }
 
 // Function to calculate gradient color based on success rate
@@ -133,7 +113,6 @@ function Archive() {
             successRate,
             averageTime,
             averageGuesses,
-            isJulia: isJuliaPuzzle(puzzle),
           };
         })
       );
@@ -250,10 +229,12 @@ function Archive() {
                           year: 'numeric',
                         });
 
-                        // Get gradient color based on success rate, or purple for julia puzzles
-                        const isJulia = puzzle.isJulia || false;
-                        const difficultyColor = isJulia ? 'rgb(147, 51, 234)' : getDifficultyColor(puzzle.successRate); // Purple for julia
-                        const borderColor = isJulia ? 'border-purple-400' : 'border-gray-300';
+                        // Check if this is a Julia puzzle (vegemite, adventure, rugby)
+                        const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
+                        
+                        // Get gradient color based on success rate (or purple for Julia puzzles)
+                        const difficultyColor = isJuliaPuzzle ? 'rgb(147, 51, 234)' : getDifficultyColor(puzzle.successRate); // purple-600
+                        const borderColor = isJuliaPuzzle ? 'border-purple-500' : 'border-gray-300';
 
                         return (
                           <Link
@@ -261,14 +242,16 @@ function Archive() {
                             to={`/archive/${puzzle.id}`}
                             className={`rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 relative ${borderColor} hover:shadow-lg`}
                             style={{
-                              backgroundColor: isJulia 
-                                ? 'rgba(147, 51, 234, 0.15)' 
+                              backgroundColor: isJuliaPuzzle 
+                                ? 'rgba(147, 51, 234, 0.15)' // purple background
                                 : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`,
                             }}
                           >
-                            {isJulia && (
-                              <div className="absolute top-1 right-1 bg-purple-600 text-white text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded">
-                                JULIA
+                            {isJuliaPuzzle && (
+                              <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
+                                <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                  julia
+                                </span>
                               </div>
                             )}
                             <div className="text-center">
@@ -335,13 +318,15 @@ function Archive() {
 
                           const isPlayed = playedPuzzleIds.has(puzzle.id);
                           const playedInfo = playedPuzzleData.get(puzzle.id);
-                          const isJulia = puzzle.isJulia || false;
 
-                          // Get gradient color based on success rate, or purple for julia puzzles
-                          const difficultyColor = isJulia ? 'rgb(147, 51, 234)' : getDifficultyColor(puzzle.successRate); // Purple for julia
+                          // Check if this is a Julia puzzle (vegemite, adventure, rugby)
+                          const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
+                          
+                          // Get gradient color based on success rate (or purple for Julia puzzles)
+                          const difficultyColor = isJuliaPuzzle ? 'rgb(147, 51, 234)' : getDifficultyColor(puzzle.successRate); // purple-600
                           const borderColor = isPlayed 
-                            ? (isJulia ? 'border-purple-400' : 'border-gray-400')
-                            : (isJulia ? 'border-purple-400' : 'border-gray-300');
+                            ? (isJuliaPuzzle ? 'border-purple-400' : 'border-gray-400')
+                            : (isJuliaPuzzle ? 'border-purple-500' : 'border-gray-300');
 
                           return (
                             <Link
@@ -352,24 +337,22 @@ function Archive() {
                               }`}
                               style={{
                                 backgroundColor: isPlayed 
-                                  ? (isJulia ? 'rgba(147, 51, 234, 0.1)' : 'rgba(156, 163, 175, 0.1)') // purple for julia, grey for others
-                                  : (isJulia ? 'rgba(147, 51, 234, 0.15)' : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`),
+                                  ? (isJuliaPuzzle ? 'rgba(147, 51, 234, 0.1)' : 'rgba(156, 163, 175, 0.1)') // purple or grey background for already played
+                                  : (isJuliaPuzzle ? 'rgba(147, 51, 234, 0.15)' : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`),
                               }}
                             >
-                              {isPlayed && (
-                                <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
+                              <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
+                                {isPlayed && (
                                   <span className="text-[9px] sm:text-[10px] font-semibold text-gray-600 bg-gray-200 px-1.5 sm:px-2 py-0.5 rounded">
                                     Already played
                                   </span>
-                                </div>
-                              )}
-                              {isJulia && (
-                                <div className={`absolute ${isPlayed ? 'top-1 left-1 sm:top-2 sm:left-2' : 'top-1 right-1 sm:top-2 sm:right-2'}`}>
-                                  <span className="text-[8px] sm:text-[9px] font-bold text-white bg-purple-600 px-1.5 sm:px-2 py-0.5 rounded">
-                                    JULIA
+                                )}
+                                {isJuliaPuzzle && (
+                                  <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                    julia
                                   </span>
-                                </div>
-                              )}
+                                )}
+                              </div>
                               <div className="text-center">
                                 <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? 'text-gray-600' : 'text-gray-900'}`}>
                                   {dateStr}
