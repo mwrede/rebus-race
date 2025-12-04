@@ -7,10 +7,16 @@ interface PuzzleWithStats extends Puzzle {
   successRate: number | null;
 }
 
+interface PlayedPuzzleInfo {
+  time_ms: number;
+  is_correct: boolean;
+}
+
 function Archive() {
   const [puzzles, setPuzzles] = useState<PuzzleWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [playedPuzzleIds, setPlayedPuzzleIds] = useState<Set<string>>(new Set());
+  const [playedPuzzleData, setPlayedPuzzleData] = useState<Map<string, PlayedPuzzleInfo>>(new Map());
 
   useEffect(() => {
     loadArchive();
@@ -78,13 +84,28 @@ function Archive() {
 
       const { data, error } = await supabase
         .from('submissions')
-        .select('puzzle_id')
-        .eq('anon_id', anonId);
+        .select('puzzle_id, time_ms, is_correct')
+        .eq('anon_id', anonId)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const playedIds = new Set<string>(data?.map((s: { puzzle_id: string }) => s.puzzle_id) || []);
+      // Get the most recent submission for each puzzle
+      const playedIds = new Set<string>();
+      const playedData = new Map<string, PlayedPuzzleInfo>();
+      
+      data?.forEach((s: { puzzle_id: string; time_ms: number; is_correct: boolean }) => {
+        if (!playedIds.has(s.puzzle_id)) {
+          playedIds.add(s.puzzle_id);
+          playedData.set(s.puzzle_id, {
+            time_ms: s.time_ms,
+            is_correct: s.is_correct,
+          });
+        }
+      });
+
       setPlayedPuzzleIds(playedIds);
+      setPlayedPuzzleData(playedData);
     } catch (error) {
       console.error('Error loading played puzzles:', error);
     }
@@ -124,6 +145,7 @@ function Archive() {
             });
 
             const isPlayed = playedPuzzleIds.has(puzzle.id);
+            const playedInfo = playedPuzzleData.get(puzzle.id);
 
             return (
               <Link
@@ -148,9 +170,9 @@ function Archive() {
                       No plays
                     </div>
                   )}
-                  {isPlayed && (
+                  {isPlayed && playedInfo && (
                     <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">
-                      ✓ Played
+                      ✓ Played • {(playedInfo.time_ms / 1000).toFixed(2)}s
                     </div>
                   )}
                 </div>

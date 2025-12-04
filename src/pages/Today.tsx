@@ -249,32 +249,18 @@ function Today() {
     if (!submission || !puzzle) return;
 
     const timeSeconds = (submission.time_ms / 1000).toFixed(2);
-    const shareText = `🧩 I solved today's Rebus Race puzzle in ${timeSeconds}s! Can you beat my time?\n\nPlay at: ${window.location.origin}`;
+    const resultText = submission.is_correct 
+      ? `I solved today's Rebus Race puzzle in ${timeSeconds}s!`
+      : `I tried today's Rebus Race puzzle but didn't get it right.`;
+    const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay at: ${window.location.origin}`;
 
-    // Try Web Share API first (mobile-friendly)
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Rebus Race Result',
-          text: shareText,
-          url: window.location.origin,
-        });
-        return;
-      } catch (err) {
-        // User cancelled or error occurred, fall back to clipboard
-        if ((err as Error).name !== 'AbortError') {
-          console.error('Error sharing:', err);
-        }
-      }
-    }
-
-    // Fallback to clipboard
+    // Copy to clipboard
     try {
       await navigator.clipboard.writeText(shareText);
       alert('Result copied to clipboard!');
     } catch (err) {
       console.error('Error copying to clipboard:', err);
-      // Final fallback: show the text
+      // Fallback: show the text
       prompt('Copy this text:', shareText);
     }
   };
@@ -661,25 +647,16 @@ function Today() {
                 onClick={() => {
                   if (previousSubmission) {
                     const timeSeconds = (previousSubmission.time_ms / 1000).toFixed(2);
-                    const shareText = `🧩 I solved today's Rebus Race puzzle in ${timeSeconds}s! Can you beat my time?\n\nPlay at: ${window.location.origin}`;
-                    
-                    if (navigator.share) {
-                      navigator.share({
-                        title: 'Rebus Race Result',
-                        text: shareText,
-                        url: window.location.origin,
-                      }).catch(() => {
-                        navigator.clipboard.writeText(shareText).then(() => {
-                          alert('Result copied to clipboard!');
-                        });
-                      });
-                    } else {
-                      navigator.clipboard.writeText(shareText).then(() => {
-                        alert('Result copied to clipboard!');
-                      }).catch(() => {
-                        prompt('Copy this text:', shareText);
-                      });
-                    }
+                    const resultText = previousSubmission.is_correct 
+                      ? `I solved today's Rebus Race puzzle in ${timeSeconds}s!`
+                      : `I tried today's Rebus Race puzzle but didn't get it right.`;
+                    const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay at: ${window.location.origin}`;
+
+                    navigator.clipboard.writeText(shareText).then(() => {
+                      alert('Result copied to clipboard!');
+                    }).catch(() => {
+                      prompt('Copy this text:', shareText);
+                    });
                   }
                 }}
                 className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"

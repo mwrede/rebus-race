@@ -18,6 +18,8 @@ function ArchiveDetail() {
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [previousSubmission, setPreviousSubmission] = useState<Submission | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [rank, setRank] = useState<number | null>(null);
+  const [totalCorrect, setTotalCorrect] = useState<number>(0);
 
   useEffect(() => {
     // Get or create anonymous ID
@@ -76,7 +78,7 @@ function ArchiveDetail() {
 
           setSubmission(data);
           setSubmitted(true);
-          setAlreadyPlayed(true);
+          // Don't set alreadyPlayed here - let the result screen show first
         } catch (error) {
           console.error('Error submitting answer:', error);
         } finally {
@@ -120,6 +122,10 @@ function ArchiveDetail() {
           setPreviousSubmission(existingSubmission);
           setSubmitted(true);
           setSubmission(existingSubmission);
+          // Load ranking if they got it correct
+          if (existingSubmission.is_correct) {
+            await loadRanking(puzzleId, existingSubmission.id);
+          }
         }
       }
     } catch (error) {
@@ -157,12 +163,39 @@ function ArchiveDetail() {
 
       setSubmission(data);
       setSubmitted(true);
-      setAlreadyPlayed(true);
+      // Don't set alreadyPlayed here - let the result screen show first
+
+      // Load ranking for this specific puzzle if correct
+      if (isCorrect) {
+        await loadRanking(puzzle.id, data.id);
+      }
     } catch (error) {
       console.error('Error submitting answer:', error);
       alert('Failed to submit answer. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const loadRanking = async (puzzleId: string, submissionId: string) => {
+    try {
+      // Get all correct submissions for this puzzle, ordered by time
+      const { data: allSubmissions, error: allError } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('puzzle_id', puzzleId)
+        .eq('is_correct', true)
+        .order('time_ms', { ascending: true });
+
+      if (allError) throw allError;
+
+      // Find user's rank (1-indexed)
+      const userRank =
+        allSubmissions?.findIndex((s: Submission) => s.id === submissionId) + 1 || null;
+      setRank(userRank);
+      setTotalCorrect(allSubmissions?.length || 0);
+    } catch (error) {
+      console.error('Error loading ranking:', error);
     }
   };
 
@@ -235,14 +268,14 @@ function ArchiveDetail() {
               >
                 {previousSubmission.is_correct ? '✓ Correct!' : '✗ Incorrect'}
               </div>
-              {previousSubmission.is_correct && (
-                <div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
-                  Your time: {(previousSubmission.time_ms / 1000).toFixed(2)}s
-                </div>
-              )}
-              {!previousSubmission.is_correct && (
-                <div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
-                  The correct answer was: {puzzle.answer}
+              <div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900">
+                {previousSubmission.is_correct
+                  ? `Your time: ${(previousSubmission.time_ms / 1000).toFixed(2)}s`
+                  : `The correct answer was: ${puzzle.answer}`}
+              </div>
+              {previousSubmission.is_correct && rank !== null && (
+                <div className="text-xs sm:text-sm text-gray-700 mt-1 sm:mt-2">
+                  You ranked #{rank} out of {totalCorrect} correct answers
                 </div>
               )}
             </div>
@@ -332,6 +365,11 @@ function ArchiveDetail() {
                 ? `Your time: ${(submission.time_ms / 1000).toFixed(2)}s`
                 : `The correct answer was: ${puzzle.answer}`}
             </div>
+            {submission.is_correct && rank !== null && (
+              <div className="text-xs sm:text-sm text-gray-700 mt-1 sm:mt-2">
+                You ranked #{rank} out of {totalCorrect} correct answers
+              </div>
+            )}
             <div className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-3">
               (This result does not count toward leaderboards)
             </div>
