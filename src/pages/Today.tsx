@@ -676,7 +676,7 @@ function Today() {
               </>
             )}
           </div>
-          {submitted && submission && !submission.is_correct && (
+          {submitted && submission && !submission.is_correct && !alreadyPlayed && (
             <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
               <button
                 onClick={handleShare}
