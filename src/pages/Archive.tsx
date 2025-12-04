@@ -6,9 +6,11 @@ import { Puzzle } from '../types';
 function Archive() {
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [playedPuzzleIds, setPlayedPuzzleIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadArchive();
+    loadPlayedPuzzles();
   }, []);
 
   const loadArchive = async () => {
@@ -27,6 +29,25 @@ function Archive() {
       console.error('Error loading archive:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPlayedPuzzles = async () => {
+    try {
+      const anonId = localStorage.getItem('rebus_anon_id');
+      if (!anonId) return;
+
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('puzzle_id')
+        .eq('anon_id', anonId);
+
+      if (error) throw error;
+
+      const playedIds = new Set<string>(data?.map((s: { puzzle_id: string }) => s.puzzle_id) || []);
+      setPlayedPuzzleIds(playedIds);
+    } catch (error) {
+      console.error('Error loading played puzzles:', error);
     }
   };
 
@@ -57,25 +78,36 @@ function Archive() {
             const year = puzzleDate.getFullYear();
             const weekday = puzzleDate.toLocaleDateString('en-US', { weekday: 'short' });
 
+            const isPlayed = playedPuzzleIds.has(puzzle.id);
+
             return (
               <Link
                 key={puzzle.id}
                 to={`/archive/${puzzle.id}`}
-                className="bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 p-3 sm:p-4 lg:p-6 border-2 sm:border-4 border-blue-300"
+                className={`bg-gradient-to-br rounded-xl sm:rounded-2xl shadow-lg transition-all transform p-3 sm:p-4 lg:p-6 border-2 sm:border-4 ${
+                  isPlayed
+                    ? 'from-gray-200 to-gray-300 border-gray-400 opacity-60 cursor-not-allowed'
+                    : 'from-blue-100 to-purple-100 border-blue-300 hover:shadow-xl hover:scale-105'
+                }`}
               >
                 <div className="text-center">
-                  <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-blue-600 mb-1 sm:mb-2" style={{ fontFamily: 'Comic Sans MS, cursive' }}>
+                  <div className={`text-3xl sm:text-4xl lg:text-5xl font-black mb-1 sm:mb-2 ${isPlayed ? 'text-gray-500' : 'text-blue-600'}`} style={{ fontFamily: 'Comic Sans MS, cursive' }}>
                     {day}
                   </div>
-                  <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-700 mb-0.5 sm:mb-1" style={{ fontFamily: 'Comic Sans MS, cursive' }}>
+                  <div className={`text-lg sm:text-xl lg:text-2xl font-bold mb-0.5 sm:mb-1 ${isPlayed ? 'text-gray-500' : 'text-purple-700'}`} style={{ fontFamily: 'Comic Sans MS, cursive' }}>
                     {month}
                   </div>
-                  <div className="text-sm sm:text-base lg:text-lg font-semibold text-gray-700 mb-0.5 sm:mb-1" style={{ fontFamily: 'Comic Sans MS, cursive' }}>
+                  <div className={`text-sm sm:text-base lg:text-lg font-semibold mb-0.5 sm:mb-1 ${isPlayed ? 'text-gray-500' : 'text-gray-700'}`} style={{ fontFamily: 'Comic Sans MS, cursive' }}>
                     {weekday}
                   </div>
-                  <div className="text-xs sm:text-sm font-medium text-gray-600" style={{ fontFamily: 'Comic Sans MS, cursive' }}>
+                  <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`} style={{ fontFamily: 'Comic Sans MS, cursive' }}>
                     {year}
                   </div>
+                  {isPlayed && (
+                    <div className="text-[10px] sm:text-xs font-bold text-gray-600 mt-1 sm:mt-2" style={{ fontFamily: 'Comic Sans MS, cursive' }}>
+                      ✓ Played Already
+                    </div>
+                  )}
                 </div>
               </Link>
             );

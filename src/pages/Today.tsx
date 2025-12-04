@@ -126,7 +126,21 @@ function Today() {
 
   const loadAllTimeStats = async () => {
     try {
-      // Get all correct submissions
+      // Get today's date to filter out archive puzzles
+      const today = new Date().toISOString().split('T')[0];
+
+      // Get all puzzles to check which are archive (date < today)
+      const { data: puzzles, error: puzzlesError } = await supabase
+        .from('puzzles')
+        .select('id, date');
+
+      if (puzzlesError) throw puzzlesError;
+
+      const archivePuzzleIds = new Set(
+        puzzles?.filter((p) => p.date.split('T')[0] < today).map((p) => p.id) || []
+      );
+
+      // Get all correct submissions, excluding archive puzzles
       const { data: submissions, error } = await supabase
         .from('submissions')
         .select('*')
@@ -135,10 +149,15 @@ function Today() {
 
       if (error) throw error;
 
+      // Filter out submissions from archive puzzles
+      const dailySubmissions = submissions?.filter(
+        (s) => !archivePuzzleIds.has(s.puzzle_id)
+      ) || [];
+
       // Group by anon_id and calculate stats
       const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();
 
-      submissions?.forEach((submission: Submission) => {
+      dailySubmissions.forEach((submission: Submission) => {
         if (!submission.anon_id) return;
 
         if (!userStats.has(submission.anon_id)) {
@@ -246,7 +265,21 @@ function Today() {
       setRank(userRank);
       setTotalCorrect(allSubmissions?.length || 0);
 
-      // Get user's past correct submissions (excluding current puzzle)
+      // Get today's date to filter out archive puzzles
+      const today = new Date().toISOString().split('T')[0];
+
+      // Get all puzzles to check which are archive (date < today)
+      const { data: puzzles, error: puzzlesError } = await supabase
+        .from('puzzles')
+        .select('id, date');
+
+      if (puzzlesError) throw puzzlesError;
+
+      const archivePuzzleIds = new Set(
+        puzzles?.filter((p) => p.date.split('T')[0] < today).map((p) => p.id) || []
+      );
+
+      // Get user's past correct submissions (excluding current puzzle and archive puzzles)
       const { data: pastData, error: pastError } = await supabase
         .from('submissions')
         .select('*')
@@ -254,10 +287,16 @@ function Today() {
         .eq('is_correct', true)
         .neq('puzzle_id', puzzleId)
         .order('time_ms', { ascending: true })
-        .limit(10);
+        .limit(100); // Get more to filter out archive puzzles
 
       if (pastError) throw pastError;
-      setPastSubmissions(pastData || []);
+
+      // Filter out archive puzzles and limit to 10
+      const dailyPastSubmissions = (pastData || []).filter(
+        (s) => !archivePuzzleIds.has(s.puzzle_id)
+      ).slice(0, 10);
+
+      setPastSubmissions(dailyPastSubmissions);
     } catch (error) {
       console.error('Error loading ranking and past results:', error);
     } finally {

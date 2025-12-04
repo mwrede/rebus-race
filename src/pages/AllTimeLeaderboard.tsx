@@ -32,7 +32,7 @@ function AllTimeLeaderboard() {
       // Group by anon_id and calculate stats
       const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();
 
-      submissions?.forEach((submission: Submission) => {
+      dailySubmissions.forEach((submission: Submission) => {
         if (!submission.anon_id) return;
 
         if (!userStats.has(submission.anon_id)) {

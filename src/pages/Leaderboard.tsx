@@ -6,6 +6,8 @@ function Leaderboard() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [averageTime, setAverageTime] = useState<number | null>(null);
+  const [correctPercentage, setCorrectPercentage] = useState<number | null>(null);
 
   useEffect(() => {
     loadLeaderboard();
@@ -29,17 +31,33 @@ function Leaderboard() {
       if (puzzleData) {
         setPuzzle(puzzleData);
 
-        // Get correct submissions for today's puzzle, ordered by time (fastest first)
-        const { data: submissionsData, error: submissionsError } = await supabase
+        // Get all submissions for today's puzzle (both correct and incorrect)
+        const { data: allSubmissionsData, error: allSubmissionsError } = await supabase
           .from('submissions')
           .select('*')
-          .eq('puzzle_id', puzzleData.id)
-          .eq('is_correct', true)
-          .order('time_ms', { ascending: true })
-          .limit(100);
+          .eq('puzzle_id', puzzleData.id);
 
-        if (submissionsError) throw submissionsError;
-        setSubmissions(submissionsData || []);
+        if (allSubmissionsError) throw allSubmissionsError;
+
+        // Get correct submissions, ordered by time (fastest first)
+        const correctSubmissions = (allSubmissionsData || []).filter((s: Submission) => s.is_correct);
+        correctSubmissions.sort((a: Submission, b: Submission) => a.time_ms - b.time_ms);
+        setSubmissions(correctSubmissions.slice(0, 100));
+
+        // Calculate average time for correct submissions
+        if (correctSubmissions.length > 0) {
+          const totalTime = correctSubmissions.reduce((sum: number, s: Submission) => sum + s.time_ms, 0);
+          const avgTime = totalTime / correctSubmissions.length;
+          setAverageTime(avgTime);
+        }
+
+        // Calculate percentage that got it right
+        const totalSubmissions = allSubmissionsData?.length || 0;
+        const correctCount = correctSubmissions.length;
+        if (totalSubmissions > 0) {
+          const percentage = (correctCount / totalSubmissions) * 100;
+          setCorrectPercentage(percentage);
+        }
       }
     } catch (error) {
       console.error('Error loading leaderboard:', error);
@@ -70,9 +88,26 @@ function Leaderboard() {
       <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 text-center">
         Today's Leaderboard
       </h1>
-      <p className="text-center text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
+      <p className="text-center text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3">
         Fastest correct submissions for today's puzzle
       </p>
+
+      {(averageTime !== null || correctPercentage !== null) && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4 md:mb-6">
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+            {averageTime !== null && (
+              <div className="font-semibold text-gray-900">
+                Avg Time: <span className="text-blue-700">{(averageTime / 1000).toFixed(2)}s</span>
+              </div>
+            )}
+            {correctPercentage !== null && (
+              <div className="font-semibold text-gray-900">
+                Success Rate: <span className="text-blue-700">{correctPercentage.toFixed(1)}%</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {submissions.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
