@@ -267,7 +267,7 @@ function Leaderboard() {
                     </td>
                   </tr>
                 ))}
-                {incorrectSubmissions.map((submission, index) => (
+                {incorrectSubmissions.map((submission) => (
                   <tr
                     key={submission.id}
                     className="bg-red-50"
