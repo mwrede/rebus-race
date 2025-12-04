@@ -15,5 +15,6 @@ export interface Submission {
   is_correct: boolean;
   time_ms: number;
   created_at: string;
+  guess_count?: number | null;
 }
 

@@ -7,7 +7,32 @@ interface PuzzleWithStats extends Puzzle {
   successRate: number | null;
   averageTime: number | null;
   averageGuesses: number | null;
-  difficulty: 'easy' | 'medium' | 'hard';
+}
+
+// Function to calculate gradient color based on success rate
+// 0% = red (hardest), 50% = orange (medium), 100% = green (easiest)
+function getDifficultyColor(successRate: number | null): string {
+  if (successRate === null) return 'rgb(229, 231, 235)'; // gray for no data
+  
+  // Clamp between 0 and 100
+  const rate = Math.max(0, Math.min(100, successRate));
+  
+  // Interpolate between red (0%), orange (50%), and green (100%)
+  if (rate <= 50) {
+    // Red to Orange: 0% = red, 50% = orange
+    const ratio = rate / 50;
+    const r = Math.round(255 - (255 - 249) * ratio); // 255 -> 249
+    const g = Math.round(0 + (140 - 0) * ratio); // 0 -> 140
+    const b = Math.round(0 + (20 - 0) * ratio); // 0 -> 20
+    return `rgb(${r}, ${g}, ${b})`;
+  } else {
+    // Orange to Green: 50% = orange, 100% = green
+    const ratio = (rate - 50) / 50;
+    const r = Math.round(249 - (249 - 34) * ratio); // 249 -> 34
+    const g = Math.round(140 + (197 - 140) * ratio); // 140 -> 197
+    const b = Math.round(20 - (20 - 94) * ratio); // 20 -> 94
+    return `rgb(${r}, ${g}, ${b})`;
+  }
 }
 
 interface PlayedPuzzleInfo {
@@ -90,34 +115,8 @@ function Archive() {
           };
         })
       );
-
-      // Sort by success rate to determine difficulty tiers
-      const puzzlesWithSuccessRate = puzzlesWithStats.filter(p => p.successRate !== null);
-      puzzlesWithSuccessRate.sort((a, b) => (b.successRate || 0) - (a.successRate || 0));
       
-      // Calculate difficulty tiers (top 1/3 = easy, middle 1/3 = medium, bottom 1/3 = hard)
-      const totalWithRate = puzzlesWithSuccessRate.length;
-      const thirdSize = Math.ceil(totalWithRate / 3);
-      
-      // Create a map of puzzle ID to difficulty
-      const difficultyMap = new Map<string, 'easy' | 'medium' | 'hard'>();
-      puzzlesWithSuccessRate.forEach((puzzle, index) => {
-        if (index < thirdSize) {
-          difficultyMap.set(puzzle.id, 'easy');
-        } else if (index < thirdSize * 2) {
-          difficultyMap.set(puzzle.id, 'medium');
-        } else {
-          difficultyMap.set(puzzle.id, 'hard');
-        }
-      });
-
-      // Add difficulty to each puzzle
-      const puzzlesWithDifficulty = puzzlesWithStats.map(puzzle => ({
-        ...puzzle,
-        difficulty: difficultyMap.get(puzzle.id) || 'medium' as 'easy' | 'medium' | 'hard',
-      }));
-      
-      setPuzzles(puzzlesWithDifficulty);
+      setPuzzles(puzzlesWithStats);
     } catch (error) {
       console.error('Error loading archive:', error);
     } finally {
@@ -197,33 +196,24 @@ function Archive() {
             const playedInfo = playedPuzzleData.get(puzzle.id);
             const isWon = playedInfo?.is_correct || false;
 
-            // Determine background color based on difficulty (if not played) or win/loss (if played)
-            let bgColor = 'bg-white';
-            let borderColor = 'border-blue-300';
-            if (isPlayed) {
-              bgColor = isWon ? 'bg-green-50' : 'bg-red-50';
-              borderColor = isWon ? 'border-green-300' : 'border-red-300';
-            } else {
-              // Color by difficulty
-              if (puzzle.difficulty === 'easy') {
-                bgColor = 'bg-green-50';
-                borderColor = 'border-green-300';
-              } else if (puzzle.difficulty === 'medium') {
-                bgColor = 'bg-yellow-50';
-                borderColor = 'border-yellow-300';
-              } else {
-                bgColor = 'bg-red-50';
-                borderColor = 'border-red-300';
-              }
-            }
+            // Get gradient color based on success rate
+            const difficultyColor = getDifficultyColor(puzzle.successRate);
+            const borderColor = isPlayed 
+              ? (isWon ? 'border-green-400' : 'border-red-400')
+              : 'border-gray-300';
 
             return (
               <Link
                 key={puzzle.id}
                 to={`/archive/${puzzle.id}`}
                 className={`rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 ${
-                  isPlayed ? `${bgColor} ${borderColor} opacity-90` : `${bgColor} ${borderColor} hover:shadow-lg`
+                  isPlayed ? `${borderColor} opacity-90` : `${borderColor} hover:shadow-lg`
                 }`}
+                style={{
+                  backgroundColor: isPlayed 
+                    ? (isWon ? 'rgba(34, 197, 94, 0.1)' : 'rgba(220, 38, 38, 0.1)')
+                    : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`,
+                }}
               >
                 <div className="text-center">
                   <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? (isWon ? 'text-green-700' : 'text-red-700') : 'text-gray-900'}`}>
