@@ -19,10 +19,12 @@ function Archive() {
 
   const loadArchive = async () => {
     try {
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayStr = today.toISOString().split('T')[0];
+      // Get today's date in YYYY-MM-DD format (local timezone, no time component)
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
       
       // Get all puzzles
       const { data, error } = await supabase
@@ -109,7 +111,12 @@ function Archive() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {puzzles.map((puzzle) => {
-            const puzzleDate = new Date(puzzle.date);
+            // Parse date string directly to avoid timezone issues
+            const dateParts = puzzle.date.split('T')[0].split('-');
+            const year = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]) - 1; // 0-indexed
+            const day = parseInt(dateParts[2]);
+            const puzzleDate = new Date(year, month, day);
             const dateStr = puzzleDate.toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
