@@ -77,7 +77,9 @@ function ArchiveDetail() {
 
                 setSubmission(data);
                 setSubmitted(true);
-                setAlreadyPlayed(true);
+                // Don't set alreadyPlayed yet - let the result page show first
+                // Load incorrect percentage for timeout
+                await loadIncorrectPercentage(puzzle.id);
               } catch (error) {
                 console.error('Error submitting answer:', error);
               } finally {
@@ -178,7 +180,8 @@ function ArchiveDetail() {
 
         setSubmission(data);
         setSubmitted(true);
-        setAlreadyPlayed(true);
+        // Don't set alreadyPlayed yet - let the result page show first
+        // It will be set when they come back later
 
         // Load ranking and past results for this specific puzzle
         await loadRankingAndPastResults(puzzle.id, data.id, timeMs);
@@ -220,7 +223,7 @@ function ArchiveDetail() {
 
           setSubmission(data);
           setSubmitted(true);
-          setAlreadyPlayed(true);
+          // Don't set alreadyPlayed yet - let the result page show first
           // Load incorrect percentage
           await loadIncorrectPercentage(puzzle.id);
         } catch (error) {
@@ -667,7 +670,7 @@ function ArchiveDetail() {
         </div>
       )}
 
-      {submitted && submission && !alreadyPlayed && (
+      {submitted && submission && (
         <div className={`rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 bg-white`}>
           <div className="text-center mb-2 sm:mb-3">
             <div

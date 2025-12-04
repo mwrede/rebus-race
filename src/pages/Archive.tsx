@@ -217,12 +217,11 @@ function Archive() {
 
             const isPlayed = playedPuzzleIds.has(puzzle.id);
             const playedInfo = playedPuzzleData.get(puzzle.id);
-            const isWon = playedInfo?.is_correct || false;
 
             // Get gradient color based on success rate
             const difficultyColor = getDifficultyColor(puzzle.successRate);
             const borderColor = isPlayed 
-              ? (isWon ? 'border-green-400' : 'border-red-400')
+              ? 'border-gray-400'
               : 'border-gray-300';
 
             return (
@@ -234,7 +233,7 @@ function Archive() {
                 }`}
                 style={{
                   backgroundColor: isPlayed 
-                    ? (isWon ? 'rgba(34, 197, 94, 0.1)' : 'rgba(220, 38, 38, 0.1)')
+                    ? 'rgba(156, 163, 175, 0.1)' // grey background for already played
                     : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`,
                 }}
               >
@@ -246,32 +245,32 @@ function Archive() {
                   </div>
                 )}
                 <div className="text-center">
-                  <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? (isWon ? 'text-green-700' : 'text-red-700') : 'text-gray-900'}`}>
+                  <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? 'text-gray-600' : 'text-gray-900'}`}>
                     {dateStr}
                   </div>
                   <div className="space-y-0.5 mb-1">
                     {puzzle.averageGuesses !== null && (
-                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-gray-600'}`}>
+                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
                         Avg {puzzle.averageGuesses.toFixed(1)} guesses
                       </div>
                     )}
                     {puzzle.averageTime !== null && (
-                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-gray-600'}`}>
+                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
                         Avg {(puzzle.averageTime / 1000).toFixed(2)}s
                       </div>
                     )}
                     {puzzle.successRate !== null ? (
-                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-blue-600'}`}>
+                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-blue-600'}`}>
                         {puzzle.successRate.toFixed(1)}% correct
                       </div>
                     ) : (
-                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-500' : 'text-red-500') : 'text-gray-500'}`}>
+                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-500'}`}>
                         No plays
                       </div>
                     )}
                   </div>
                   {isPlayed && playedInfo && (
-                    <div className={`text-[10px] sm:text-xs font-medium ${isWon ? 'text-green-700' : 'text-red-700'} mt-1 pt-1 border-t border-gray-200`}>
+                    <div className="text-[10px] sm:text-xs font-medium text-gray-600 mt-1 pt-1 border-t border-gray-200">
                       <div>You: {playedInfo.guess_count !== null ? `${playedInfo.guess_count} guesses` : '—'} • {(playedInfo.time_ms / 1000).toFixed(2)}s</div>
                     </div>
                   )}
