@@ -12,6 +12,7 @@ interface AllTimeEntry {
 function Leaderboard() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [incorrectSubmissions, setIncorrectSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [averageTime, setAverageTime] = useState<number | null>(null);
   const [correctPercentage, setCorrectPercentage] = useState<number | null>(null);
@@ -53,6 +54,13 @@ function Leaderboard() {
         const correctSubmissions = (allSubmissionsData || []).filter((s: Submission) => s.is_correct);
         correctSubmissions.sort((a: Submission, b: Submission) => a.time_ms - b.time_ms);
         setSubmissions(correctSubmissions.slice(0, 100));
+
+        // Get incorrect submissions (ordered by submission time, most recent first)
+        const incorrectSubs = (allSubmissionsData || []).filter((s: Submission) => !s.is_correct);
+        incorrectSubs.sort((a: Submission, b: Submission) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setIncorrectSubmissions(incorrectSubs);
 
         // Calculate average time for correct submissions
         if (correctSubmissions.length > 0) {
@@ -202,9 +210,9 @@ function Leaderboard() {
         </div>
       )}
 
-      {submissions.length === 0 ? (
+      {submissions.length === 0 && incorrectSubmissions.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <p className="text-gray-600">No correct submissions yet. Be the first!</p>
+          <p className="text-gray-600">No submissions yet. Be the first!</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -254,6 +262,33 @@ function Leaderboard() {
                     </td>
                     <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap hidden sm:table-cell">
                       <span className="text-[10px] sm:text-xs md:text-sm text-gray-500">
+                        {new Date(submission.created_at).toLocaleTimeString()}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {incorrectSubmissions.map((submission, index) => (
+                  <tr
+                    key={submission.id}
+                    className="bg-red-50"
+                  >
+                    <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
+                      <span className="text-[10px] sm:text-xs md:text-sm font-medium text-red-600">
+                        —
+                      </span>
+                    </td>
+                    <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
+                      <span className="text-[10px] sm:text-xs md:text-sm font-medium text-red-600 truncate max-w-[100px] sm:max-w-none">
+                        {submission.username || 'Anonymous'}
+                      </span>
+                    </td>
+                    <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
+                      <span className="text-[10px] sm:text-xs md:text-sm text-red-600 font-semibold">
+                        —
+                      </span>
+                    </td>
+                    <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap hidden sm:table-cell">
+                      <span className="text-[10px] sm:text-xs md:text-sm text-red-500">
                         {new Date(submission.created_at).toLocaleTimeString()}
                       </span>
                     </td>
