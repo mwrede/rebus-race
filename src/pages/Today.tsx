@@ -81,6 +81,10 @@ function Today() {
 
           setSubmission(data);
           setSubmitted(true);
+          // Load incorrect percentage for timeout case
+          await loadIncorrectPercentage(puzzle.id);
+          // Load all-time stats even if incorrect
+          await loadAllTimeStats();
         } catch (error) {
           console.error('Error submitting answer:', error);
         } finally {
