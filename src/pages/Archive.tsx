@@ -139,14 +139,13 @@ function Archive() {
                   <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? 'text-gray-500' : 'text-gray-900'}`}>
                     {dateStr}
                   </div>
-                  {puzzle.successRate !== null && (
+                  {puzzle.successRate !== null ? (
                     <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-400' : 'text-blue-600'}`}>
                       {puzzle.successRate.toFixed(1)}% correct
                     </div>
-                  )}
-                  {puzzle.successRate === null && (
+                  ) : (
                     <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-400' : 'text-gray-500'}`}>
-                      No submissions
+                      No plays
                     </div>
                   )}
                   {isPlayed && (

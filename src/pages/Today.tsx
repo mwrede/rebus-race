@@ -56,10 +56,10 @@ function Today() {
   useEffect(() => {
     if (timeLeft === 0 && !submitted && isReady && puzzle && !isSubmitting) {
       // Automatically submit as incorrect when time runs out
+      // Use 60 seconds (60000ms) for average response time calculation
       const submitTimeout = async () => {
         setIsSubmitting(true);
-        const endTime = Date.now();
-        const timeMs = startTime ? endTime - startTime : 0;
+        const timeMs = 60000; // 60 seconds for timeout/no answer
 
         try {
           const username = getUsername();
