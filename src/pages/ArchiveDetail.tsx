@@ -48,6 +48,44 @@ function ArchiveDetail() {
     }
   }, [isReady, startTime, timeLeft, submitted]);
 
+  useEffect(() => {
+    if (timeLeft === 0 && !submitted && isReady && puzzle && !isSubmitting) {
+      // Automatically submit as incorrect when time runs out
+      const submitTimeout = async () => {
+        setIsSubmitting(true);
+        const endTime = Date.now();
+        const timeMs = startTime ? endTime - startTime : 0;
+
+        try {
+          const username = getUsername();
+          const { data, error } = await supabase
+            .from('submissions')
+            .insert({
+              puzzle_id: puzzle.id,
+              anon_id: anonId,
+              answer: answer.trim() || '',
+              is_correct: false,
+              time_ms: timeMs,
+              username: username || null,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          setSubmission(data);
+          setSubmitted(true);
+          setAlreadyPlayed(true);
+        } catch (error) {
+          console.error('Error submitting answer:', error);
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+      submitTimeout();
+    }
+  }, [timeLeft, submitted, isReady, puzzle, isSubmitting, startTime, anonId, answer]);
+
   const handleReady = () => {
     setIsReady(true);
     setStartTime(Date.now());
@@ -215,13 +253,6 @@ function ArchiveDetail() {
         <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 mb-2 sm:mb-3">
           {!isReady ? (
             <div className="text-center py-3 sm:py-4">
-              <div className="mb-3 sm:mb-4">
-                <img
-                  src={puzzle.image_url}
-                  alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-200 opacity-50 blur-sm max-h-[40vh] object-contain"
-                />
-              </div>
               <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3">
                 Are you ready?
               </h2>
@@ -230,7 +261,7 @@ function ArchiveDetail() {
               </p>
               <button
                 onClick={handleReady}
-                className="bg-blue-600 text-white py-2 sm:py-2.5 px-5 sm:px-8 rounded-lg hover:bg-blue-700 font-bold text-sm sm:text-base md:text-lg shadow-lg transform hover:scale-105 transition-all"
+                className="bg-blue-600 text-white py-2 sm:py-2.5 px-5 sm:px-8 rounded-lg hover:bg-blue-700 font-bold text-sm sm:text-base md:text-lg shadow-lg"
               >
                 Start Timer! ⏱️
               </button>
@@ -244,15 +275,15 @@ function ArchiveDetail() {
                 <div className="text-[9px] sm:text-[10px] text-gray-600">Time remaining</div>
               </div>
 
-              <div className="mb-2 sm:mb-3">
+              <div className="mb-1.5 sm:mb-2">
                 <img
                   src={puzzle.image_url}
                   alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-200 max-h-[35vh] object-contain"
+                  className="w-full rounded-lg border-2 border-gray-200 max-h-[30vh] sm:max-h-[35vh] object-contain"
                 />
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-1.5 sm:space-y-2">
+              <form onSubmit={handleSubmit} className="space-y-1.5">
                 <div>
                   <label
                     htmlFor="answer"
@@ -274,7 +305,7 @@ function ArchiveDetail() {
                 <button
                   type="submit"
                   disabled={submitted || timeLeft === 0 || !answer.trim() || isSubmitting}
-                  className="w-full bg-blue-600 text-white py-1.5 sm:py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
+                  className="w-full bg-blue-600 text-white py-1.5 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Answer'}
                 </button>
@@ -306,13 +337,6 @@ function ArchiveDetail() {
         </div>
       )}
 
-      {timeLeft === 0 && !submitted && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 sm:p-3 md:p-4 mb-3 sm:mb-4">
-          <p className="text-yellow-800 text-center text-xs sm:text-sm md:text-base">
-            Time's up! You can still submit your answer.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

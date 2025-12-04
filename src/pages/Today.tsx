@@ -53,6 +53,43 @@ function Today() {
     }
   }, [isReady, startTime, timeLeft, submitted]);
 
+  useEffect(() => {
+    if (timeLeft === 0 && !submitted && isReady && puzzle && !isSubmitting) {
+      // Automatically submit as incorrect when time runs out
+      const submitTimeout = async () => {
+        setIsSubmitting(true);
+        const endTime = Date.now();
+        const timeMs = startTime ? endTime - startTime : 0;
+
+        try {
+          const username = getUsername();
+          const { data, error } = await supabase
+            .from('submissions')
+            .insert({
+              puzzle_id: puzzle.id,
+              anon_id: anonId,
+              answer: answer.trim() || '',
+              is_correct: false,
+              time_ms: timeMs,
+              username: username || null,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          setSubmission(data);
+          setSubmitted(true);
+        } catch (error) {
+          console.error('Error submitting answer:', error);
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+      submitTimeout();
+    }
+  }, [timeLeft, submitted, isReady, puzzle, isSubmitting, startTime, anonId, answer]);
+
   const handleReady = () => {
     setIsReady(true);
     setStartTime(Date.now());
@@ -393,13 +430,6 @@ function Today() {
         <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 lg:p-6 mb-2 sm:mb-3 md:mb-4">
           {!isReady ? (
             <div className="text-center py-3 sm:py-4 md:py-6">
-              <div className="mb-3 sm:mb-4 md:mb-6">
-                <img
-                  src={puzzle.image_url}
-                  alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-200 opacity-50 blur-sm max-h-[40vh] object-contain"
-                />
-              </div>
               <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">
                 Are you ready?
               </h2>
@@ -408,33 +438,33 @@ function Today() {
               </p>
               <button
                 onClick={handleReady}
-                className="bg-blue-600 text-white py-2 sm:py-3 px-6 sm:px-8 md:px-12 rounded-lg hover:bg-blue-700 font-bold text-base sm:text-lg md:text-xl shadow-lg transform hover:scale-105 transition-all"
+                className="bg-blue-600 text-white py-2 sm:py-3 px-6 sm:px-8 md:px-12 rounded-lg hover:bg-blue-700 font-bold text-base sm:text-lg md:text-xl shadow-lg"
               >
                 Start Timer! ⏱️
               </button>
             </div>
           ) : (
             <>
-              <div className="text-center mb-2 sm:mb-3">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 mb-0.5 sm:mb-1">
+              <div className="text-center mb-1.5 sm:mb-2">
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 mb-0.5">
                   {timeLeft}s
                 </div>
-                <div className="text-[9px] sm:text-[10px] md:text-xs text-gray-600">Time remaining</div>
+                <div className="text-[9px] sm:text-[10px] text-gray-600">Time remaining</div>
               </div>
 
-              <div className="mb-2 sm:mb-3 md:mb-4">
+              <div className="mb-1.5 sm:mb-2">
                 <img
                   src={puzzle.image_url}
                   alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-200 max-h-[35vh] object-contain"
+                  className="w-full rounded-lg border-2 border-gray-200 max-h-[30vh] sm:max-h-[35vh] object-contain"
                 />
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-2">
+              <form onSubmit={handleSubmit} className="space-y-1.5">
                 <div>
                   <label
                     htmlFor="answer"
-                    className="block text-[10px] sm:text-xs font-medium text-gray-700 mb-0.5 sm:mb-1"
+                    className="block text-[10px] sm:text-xs font-medium text-gray-700 mb-0.5"
                   >
                     Your Answer
                   </label>
@@ -444,7 +474,7 @@ function Today() {
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
                     disabled={submitted || timeLeft === 0}
-                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                    className="w-full px-2 sm:px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                     placeholder="Enter your answer..."
                     autoFocus
                   />
@@ -452,7 +482,7 @@ function Today() {
                 <button
                   type="submit"
                   disabled={submitted || timeLeft === 0 || !answer.trim() || isSubmitting}
-                  className="w-full bg-blue-600 text-white py-1.5 sm:py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
+                  className="w-full bg-blue-600 text-white py-1.5 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Answer'}
                 </button>
@@ -693,13 +723,6 @@ function Today() {
         </div>
       )}
 
-      {timeLeft === 0 && !submitted && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 sm:p-3 md:p-4 mb-3 sm:mb-4 md:mb-6">
-          <p className="text-yellow-800 text-center text-xs sm:text-sm md:text-base">
-            Time's up! You can still submit your answer, but it won't count toward the leaderboard.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
