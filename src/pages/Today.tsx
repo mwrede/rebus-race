@@ -445,26 +445,26 @@ function Today() {
             </div>
           ) : (
             <>
-              <div className="text-center mb-1.5 sm:mb-2">
-                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 mb-0.5">
+              <div className="text-center mb-1 sm:mb-1.5">
+                <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 mb-0.5">
                   {timeLeft}s
                 </div>
-                <div className="text-[9px] sm:text-[10px] text-gray-600">Time remaining</div>
+                <div className="text-[8px] sm:text-[9px] text-gray-600">Time remaining</div>
               </div>
 
-              <div className="mb-1.5 sm:mb-2">
+              <div className="mb-1 sm:mb-1.5">
                 <img
                   src={puzzle.image_url}
                   alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-200 max-h-[30vh] sm:max-h-[35vh] object-contain"
+                  className="w-full rounded-lg border-2 border-gray-200 max-h-[25vh] sm:max-h-[30vh] object-contain"
                 />
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-1.5">
+              <form onSubmit={handleSubmit} className="space-y-1">
                 <div>
                   <label
                     htmlFor="answer"
-                    className="block text-[10px] sm:text-xs font-medium text-gray-700 mb-0.5"
+                    className="block text-[9px] sm:text-[10px] font-medium text-gray-700 mb-0.5"
                   >
                     Your Answer
                   </label>
@@ -474,9 +474,10 @@ function Today() {
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
                     disabled={submitted || timeLeft === 0}
-                    className="w-full px-2 sm:px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                    className="w-full px-2 py-1 text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                     placeholder="Enter your answer..."
                     autoFocus
+                    style={{ fontSize: '16px' }}
                   />
                 </div>
                 <button

@@ -3,8 +3,12 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Puzzle } from '../types';
 
+interface PuzzleWithStats extends Puzzle {
+  successRate: number | null;
+}
+
 function Archive() {
-  const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
+  const [puzzles, setPuzzles] = useState<PuzzleWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [playedPuzzleIds, setPlayedPuzzleIds] = useState<Set<string>>(new Set());
 
@@ -15,23 +19,49 @@ function Archive() {
 
   const loadArchive = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+      
+      // Get all puzzles
       const { data, error } = await supabase
         .from('puzzles')
         .select('*')
-        .lt('date', today) // Only get puzzles before today
         .order('date', { ascending: false })
         .limit(100);
 
       if (error) throw error;
       
-      // Double-check filtering in case date format doesn't match
+      // Filter to only show puzzles with dates strictly before today
       const filteredPuzzles = (data || []).filter((puzzle: Puzzle) => {
-        const puzzleDate = puzzle.date.split('T')[0];
-        return puzzleDate < today;
+        const puzzleDateStr = puzzle.date.split('T')[0];
+        return puzzleDateStr < todayStr;
       });
+
+      // Get success rates for each puzzle
+      const puzzlesWithStats = await Promise.all(
+        filteredPuzzles.map(async (puzzle: Puzzle) => {
+          // Get all submissions for this puzzle
+          const { data: submissions, error: subError } = await supabase
+            .from('submissions')
+            .select('is_correct')
+            .eq('puzzle_id', puzzle.id);
+
+          let successRate: number | null = null;
+          if (!subError && submissions && submissions.length > 0) {
+            const correctCount = submissions.filter((s: { is_correct: boolean }) => s.is_correct).length;
+            successRate = (correctCount / submissions.length) * 100;
+          }
+
+          return {
+            ...puzzle,
+            successRate,
+          };
+        })
+      );
       
-      setPuzzles(filteredPuzzles);
+      setPuzzles(puzzlesWithStats);
     } catch (error) {
       console.error('Error loading archive:', error);
     } finally {
@@ -80,10 +110,11 @@ function Archive() {
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {puzzles.map((puzzle) => {
             const puzzleDate = new Date(puzzle.date);
-            const day = puzzleDate.getDate();
-            const month = puzzleDate.toLocaleDateString('en-US', { month: 'short' });
-            const year = puzzleDate.getFullYear();
-            const weekday = puzzleDate.toLocaleDateString('en-US', { weekday: 'short' });
+            const dateStr = puzzleDate.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            });
 
             const isPlayed = playedPuzzleIds.has(puzzle.id);
 
@@ -91,28 +122,29 @@ function Archive() {
               <Link
                 key={puzzle.id}
                 to={`/archive/${puzzle.id}`}
-                className={`bg-gradient-to-br rounded-xl sm:rounded-2xl shadow-lg transition-all transform p-3 sm:p-4 lg:p-6 border-2 sm:border-4 ${
+                className={`bg-white rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 ${
                   isPlayed
-                    ? 'from-gray-200 to-gray-300 border-gray-400 opacity-60 cursor-not-allowed'
-                    : 'from-blue-100 to-purple-100 border-blue-300 hover:shadow-xl hover:scale-105'
+                    ? 'border-gray-300 opacity-60'
+                    : 'border-blue-300 hover:shadow-lg'
                 }`}
               >
                 <div className="text-center">
-                  <div className={`text-3xl sm:text-4xl lg:text-5xl font-black mb-1 sm:mb-2 ${isPlayed ? 'text-gray-500' : 'text-blue-600'}`} style={{ fontFamily: 'Comic Sans MS, cursive' }}>
-                    {day}
+                  <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? 'text-gray-500' : 'text-gray-900'}`}>
+                    {dateStr}
                   </div>
-                  <div className={`text-lg sm:text-xl lg:text-2xl font-bold mb-0.5 sm:mb-1 ${isPlayed ? 'text-gray-500' : 'text-purple-700'}`} style={{ fontFamily: 'Comic Sans MS, cursive' }}>
-                    {month}
-                  </div>
-                  <div className={`text-sm sm:text-base lg:text-lg font-semibold mb-0.5 sm:mb-1 ${isPlayed ? 'text-gray-500' : 'text-gray-700'}`} style={{ fontFamily: 'Comic Sans MS, cursive' }}>
-                    {weekday}
-                  </div>
-                  <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`} style={{ fontFamily: 'Comic Sans MS, cursive' }}>
-                    {year}
-                  </div>
+                  {puzzle.successRate !== null && (
+                    <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-400' : 'text-blue-600'}`}>
+                      {puzzle.successRate.toFixed(1)}% correct
+                    </div>
+                  )}
+                  {puzzle.successRate === null && (
+                    <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-400' : 'text-gray-500'}`}>
+                      No submissions
+                    </div>
+                  )}
                   {isPlayed && (
-                    <div className="text-[10px] sm:text-xs font-bold text-gray-600 mt-1 sm:mt-2" style={{ fontFamily: 'Comic Sans MS, cursive' }}>
-                      ✓ Played Already
+                    <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">
+                      ✓ Played
                     </div>
                   )}
                 </div>
