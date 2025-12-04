@@ -367,8 +367,8 @@ function Today() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-4">
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-4 md:mb-6 text-center">
+    <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
+      <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-1.5 sm:mb-2 md:mb-3 text-center">
         Today's Puzzle
       </h1>
 
@@ -390,73 +390,73 @@ function Today() {
       )}
 
       {!submitted && !alreadyPlayed && (
-        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-3 sm:mb-4 md:mb-6">
+        <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 lg:p-6 mb-2 sm:mb-3 md:mb-4">
           {!isReady ? (
-            <div className="text-center py-6 sm:py-8">
-              <div className="mb-6 sm:mb-8">
+            <div className="text-center py-3 sm:py-4 md:py-6">
+              <div className="mb-3 sm:mb-4 md:mb-6">
                 <img
                   src={puzzle.image_url}
                   alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-200 opacity-50 blur-sm"
+                  className="w-full rounded-lg border-2 border-gray-200 opacity-50 blur-sm max-h-[40vh] object-contain"
                 />
               </div>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">
                 Are you ready?
               </h2>
-              <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
+              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-6">
                 Once you start, you'll have 30 seconds to solve the puzzle!
               </p>
               <button
                 onClick={handleReady}
-                className="bg-blue-600 text-white py-3 sm:py-4 px-8 sm:px-12 rounded-lg hover:bg-blue-700 font-bold text-lg sm:text-xl md:text-2xl shadow-lg transform hover:scale-105 transition-all"
+                className="bg-blue-600 text-white py-2 sm:py-3 px-6 sm:px-8 md:px-12 rounded-lg hover:bg-blue-700 font-bold text-base sm:text-lg md:text-xl shadow-lg transform hover:scale-105 transition-all"
               >
                 Start Timer! ⏱️
               </button>
             </div>
           ) : (
             <>
-              <div className="text-center mb-3 sm:mb-4">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-600 mb-1 sm:mb-2">
+              <div className="text-center mb-2 sm:mb-3">
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 mb-0.5 sm:mb-1">
                   {timeLeft}s
                 </div>
-                <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">Time remaining</div>
+                <div className="text-[9px] sm:text-[10px] md:text-xs text-gray-600">Time remaining</div>
               </div>
 
-              <div className="mb-4 sm:mb-6">
+              <div className="mb-2 sm:mb-3 md:mb-4">
                 <img
                   src={puzzle.image_url}
                   alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-200"
+                  className="w-full rounded-lg border-2 border-gray-200 max-h-[35vh] object-contain"
                 />
               </div>
 
-              <form onSubmit={handleSubmit}>
-            <div className="mb-3 sm:mb-4">
-              <label
-                htmlFor="answer"
-                className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2"
-              >
-                Your Answer
-              </label>
-              <input
-                type="text"
-                id="answer"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                disabled={submitted || timeLeft === 0}
-                className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                placeholder="Enter your answer..."
-                autoFocus
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={submitted || timeLeft === 0 || !answer.trim() || isSubmitting}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Answer'}
-            </button>
-          </form>
+              <form onSubmit={handleSubmit} className="space-y-2">
+                <div>
+                  <label
+                    htmlFor="answer"
+                    className="block text-[10px] sm:text-xs font-medium text-gray-700 mb-0.5 sm:mb-1"
+                  >
+                    Your Answer
+                  </label>
+                  <input
+                    type="text"
+                    id="answer"
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    disabled={submitted || timeLeft === 0}
+                    className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                    placeholder="Enter your answer..."
+                    autoFocus
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitted || timeLeft === 0 || !answer.trim() || isSubmitting}
+                  className="w-full bg-blue-600 text-white py-1.5 sm:py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit Answer'}
+                </button>
+              </form>
             </>
           )}
         </div>

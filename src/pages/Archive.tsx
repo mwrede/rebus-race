@@ -24,7 +24,14 @@ function Archive() {
         .limit(100);
 
       if (error) throw error;
-      setPuzzles(data || []);
+      
+      // Double-check filtering in case date format doesn't match
+      const filteredPuzzles = (data || []).filter((puzzle: Puzzle) => {
+        const puzzleDate = puzzle.date.split('T')[0];
+        return puzzleDate < today;
+      });
+      
+      setPuzzles(filteredPuzzles);
     } catch (error) {
       console.error('Error loading archive:', error);
     } finally {

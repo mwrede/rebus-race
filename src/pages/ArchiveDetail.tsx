@@ -152,15 +152,15 @@ function ArchiveDetail() {
   const puzzleDate = new Date(puzzle.date);
 
   return (
-    <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-4">
+    <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
       <Link
         to="/archive"
-        className="text-blue-600 hover:text-blue-800 mb-3 sm:mb-4 inline-block text-xs sm:text-sm md:text-base"
+        className="text-blue-600 hover:text-blue-800 mb-1 sm:mb-2 inline-block text-[10px] sm:text-xs md:text-sm"
       >
         ← Back to Archive
       </Link>
 
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">
+      <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
         Puzzle from {puzzleDate.toLocaleDateString('en-US', {
           weekday: 'long',
           year: 'numeric',
@@ -169,8 +169,8 @@ function ArchiveDetail() {
         })}
       </h1>
 
-      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-2 sm:p-3 md:p-4 mb-3 sm:mb-4">
-        <p className="text-xs sm:text-sm md:text-base text-yellow-800 font-semibold text-center">
+      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-1.5 sm:p-2 md:p-3 mb-2 sm:mb-3">
+        <p className="text-[10px] sm:text-xs md:text-sm text-yellow-800 font-semibold text-center">
           ⚠️ Archive puzzles do NOT count toward leaderboards or statistics
         </p>
       </div>
@@ -212,51 +212,51 @@ function ArchiveDetail() {
       )}
 
       {!submitted && !alreadyPlayed && (
-        <div className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 mb-3 sm:mb-4">
+        <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 mb-2 sm:mb-3">
           {!isReady ? (
-            <div className="text-center py-4 sm:py-6">
-              <div className="mb-4 sm:mb-6">
+            <div className="text-center py-3 sm:py-4">
+              <div className="mb-3 sm:mb-4">
                 <img
                   src={puzzle.image_url}
                   alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-200 opacity-50 blur-sm"
+                  className="w-full rounded-lg border-2 border-gray-200 opacity-50 blur-sm max-h-[40vh] object-contain"
                 />
               </div>
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
+              <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3">
                 Are you ready?
               </h2>
-              <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
+              <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">
                 Once you start, you'll have 30 seconds to solve the puzzle!
               </p>
               <button
                 onClick={handleReady}
-                className="bg-blue-600 text-white py-2 sm:py-3 px-6 sm:px-10 rounded-lg hover:bg-blue-700 font-bold text-base sm:text-lg md:text-xl shadow-lg transform hover:scale-105 transition-all"
+                className="bg-blue-600 text-white py-2 sm:py-2.5 px-5 sm:px-8 rounded-lg hover:bg-blue-700 font-bold text-sm sm:text-base md:text-lg shadow-lg transform hover:scale-105 transition-all"
               >
                 Start Timer! ⏱️
               </button>
             </div>
           ) : (
             <>
-              <div className="text-center mb-2 sm:mb-3">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-600 mb-1 sm:mb-2">
+              <div className="text-center mb-1.5 sm:mb-2">
+                <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 mb-0.5">
                   {timeLeft}s
                 </div>
-                <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">Time remaining</div>
+                <div className="text-[9px] sm:text-[10px] text-gray-600">Time remaining</div>
               </div>
 
-              <div className="mb-3 sm:mb-4">
+              <div className="mb-2 sm:mb-3">
                 <img
                   src={puzzle.image_url}
                   alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-200"
+                  className="w-full rounded-lg border-2 border-gray-200 max-h-[35vh] object-contain"
                 />
               </div>
 
-              <form onSubmit={handleSubmit}>
-                <div className="mb-2 sm:mb-3">
+              <form onSubmit={handleSubmit} className="space-y-1.5 sm:space-y-2">
+                <div>
                   <label
                     htmlFor="answer"
-                    className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2"
+                    className="block text-[10px] sm:text-xs font-medium text-gray-700 mb-0.5"
                   >
                     Your Answer
                   </label>
@@ -266,7 +266,7 @@ function ArchiveDetail() {
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
                     disabled={submitted || timeLeft === 0}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                    className="w-full px-2 sm:px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                     placeholder="Enter your answer..."
                     autoFocus
                   />
@@ -274,7 +274,7 @@ function ArchiveDetail() {
                 <button
                   type="submit"
                   disabled={submitted || timeLeft === 0 || !answer.trim() || isSubmitting}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm sm:text-base"
+                  className="w-full bg-blue-600 text-white py-1.5 sm:py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Answer'}
                 </button>
