@@ -9,7 +9,7 @@ function Today() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [loading, setLoading] = useState(true);
   const [answer, setAnswer] = useState('');
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeElapsed, setTimeElapsed] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submission, setSubmission] = useState<Submission | null>(null);
@@ -25,6 +25,10 @@ function Today() {
   const [allTimeRank, setAllTimeRank] = useState<number | null>(null);
   const [averageTime, setAverageTime] = useState<number | null>(null);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
+  const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
+  const [guessCount, setGuessCount] = useState(0);
+  const MAX_GUESSES = 5;
+  const MAX_TIME_SECONDS = 300; // 5 minutes
 
   useEffect(() => {
     // Get or create anonymous ID
@@ -40,60 +44,55 @@ function Today() {
   }, []);
 
   useEffect(() => {
-    if (isReady && startTime !== null && timeLeft > 0 && !submitted) {
+    if (isReady && startTime !== null && !submitted) {
       const timer = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
+        if (startTime) {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          setTimeElapsed(elapsed);
+          
+          // Auto-submit when 5 minutes is reached
+          if (elapsed >= MAX_TIME_SECONDS && !submitted && puzzle && !isSubmitting) {
             clearInterval(timer);
-            return 0;
+            const submitTimeout = async () => {
+              setIsSubmitting(true);
+              const timeMs = MAX_TIME_SECONDS * 1000; // 5 minutes in ms
+
+              try {
+                const username = getUsername();
+                const { data, error } = await supabase
+                  .from('submissions')
+                  .insert({
+                    puzzle_id: puzzle.id,
+                    anon_id: anonId,
+                    answer: answer.trim() || '',
+                    is_correct: false,
+                    time_ms: timeMs,
+                    username: username || null,
+                  })
+                  .select()
+                  .single();
+
+                if (error) throw error;
+
+                setSubmission(data);
+                setSubmitted(true);
+                // Load incorrect percentage for timeout case
+                await loadIncorrectPercentage(puzzle.id);
+                // Load all-time stats even if incorrect
+                await loadAllTimeStats();
+              } catch (error) {
+                console.error('Error submitting answer:', error);
+              } finally {
+                setIsSubmitting(false);
+              }
+            };
+            submitTimeout();
           }
-          return prev - 1;
-        });
+        }
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [isReady, startTime, timeLeft, submitted]);
-
-  useEffect(() => {
-    if (timeLeft === 0 && !submitted && isReady && puzzle && !isSubmitting) {
-      // Automatically submit as incorrect when time runs out
-      // Use 60 seconds (60000ms) for average response time calculation
-      const submitTimeout = async () => {
-        setIsSubmitting(true);
-        const timeMs = 60000; // 60 seconds for timeout/no answer
-
-        try {
-          const username = getUsername();
-          const { data, error } = await supabase
-            .from('submissions')
-            .insert({
-              puzzle_id: puzzle.id,
-              anon_id: anonId,
-              answer: answer.trim() || '',
-              is_correct: false,
-              time_ms: timeMs,
-              username: username || null,
-            })
-            .select()
-            .single();
-
-          if (error) throw error;
-
-          setSubmission(data);
-          setSubmitted(true);
-          // Load incorrect percentage for timeout case
-          await loadIncorrectPercentage(puzzle.id);
-          // Load all-time stats even if incorrect
-          await loadAllTimeStats();
-        } catch (error) {
-          console.error('Error submitting answer:', error);
-        } finally {
-          setIsSubmitting(false);
-        }
-      };
-      submitTimeout();
-    }
-  }, [timeLeft, submitted, isReady, puzzle, isSubmitting, startTime, anonId, answer]);
+  }, [isReady, startTime, submitted, puzzle, isSubmitting, anonId, answer]);
 
   const handleReady = () => {
     setIsReady(true);
@@ -102,7 +101,12 @@ function Today() {
 
   const loadTodayPuzzle = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in local timezone (YYYY-MM-DD format)
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
       const { data, error } = await supabase
         .from('puzzles')
         .select('*')
@@ -356,49 +360,89 @@ function Today() {
     e.preventDefault();
     if (!puzzle || !answer.trim() || submitted || isSubmitting) return;
 
-    setIsSubmitting(true);
-    const endTime = Date.now();
-    const timeMs = startTime ? endTime - startTime : 0;
     const isCorrect = answer.trim().toLowerCase() === puzzle.answer.toLowerCase();
+    const currentAnswer = answer.trim();
 
-    try {
-      const username = getUsername();
-      const { data, error } = await supabase
-        .from('submissions')
-        .insert({
-          puzzle_id: puzzle.id,
-          anon_id: anonId,
-          answer: answer.trim(),
-          is_correct: isCorrect,
-          time_ms: timeMs,
-          username: username || null,
-        })
-        .select()
-        .single();
+    if (isCorrect) {
+      // Correct answer - submit immediately
+      setIsSubmitting(true);
+      const endTime = Date.now();
+      const timeMs = startTime ? endTime - startTime : 0;
 
-      if (error) throw error;
+      try {
+        const username = getUsername();
+        const { data, error } = await supabase
+          .from('submissions')
+          .insert({
+            puzzle_id: puzzle.id,
+            anon_id: anonId,
+            answer: currentAnswer,
+            is_correct: true,
+            time_ms: timeMs,
+            username: username || null,
+          })
+          .select()
+          .single();
 
-      setSubmission(data);
-      setSubmitted(true);
+        if (error) throw error;
 
-      // Increment win count if correct
-      if (isCorrect) {
+        setSubmission(data);
+        setSubmitted(true);
+
+        // Increment win count
         incrementWin(puzzle.id);
         // Load ranking and past results
         await loadRankingAndPastResults(puzzle.id, data.id, timeMs);
         // Load all-time stats
         await loadAllTimeStats();
-      } else {
-        // Load incorrect percentage
-        await loadIncorrectPercentage(puzzle.id);
-        // Load all-time stats even if incorrect
-        await loadAllTimeStats();
+      } catch (error) {
+        console.error('Error submitting answer:', error);
+        alert('Failed to submit answer. Please try again.');
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch (error) {
-      console.error('Error submitting answer:', error);
-      alert('Failed to submit answer. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      // Wrong answer - add to wrong guesses
+      setWrongGuesses((prev) => [...prev, currentAnswer]);
+      setGuessCount((prev) => prev + 1);
+      setAnswer(''); // Clear input for next guess
+
+      // If they've used all 5 guesses, submit as incorrect
+      if (guessCount + 1 >= MAX_GUESSES) {
+        setIsSubmitting(true);
+        const endTime = Date.now();
+        const timeMs = startTime ? endTime - startTime : 0;
+
+        try {
+          const username = getUsername();
+          const { data, error } = await supabase
+            .from('submissions')
+            .insert({
+              puzzle_id: puzzle.id,
+              anon_id: anonId,
+              answer: currentAnswer,
+              is_correct: false,
+              time_ms: timeMs,
+              username: username || null,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          setSubmission(data);
+          setSubmitted(true);
+          // Load incorrect percentage
+          await loadIncorrectPercentage(puzzle.id);
+          // Load all-time stats even if incorrect
+          await loadAllTimeStats();
+        } catch (error) {
+          console.error('Error submitting answer:', error);
+          alert('Failed to submit answer. Please try again.');
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
     }
   };
 
@@ -450,7 +494,7 @@ function Today() {
                 Are you ready?
               </h2>
               <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 md:mb-6">
-                Once you start, you'll have 30 seconds to solve the puzzle!
+                Once you start, you'll have 5 minutes and 5 guesses to solve the puzzle!
               </p>
               <button
                 onClick={handleReady}
@@ -462,11 +506,44 @@ function Today() {
           ) : (
             <>
               <div className="text-center mb-1 sm:mb-1.5">
-                <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 mb-0.5">
-                  {timeLeft}s
+                <div className={`text-lg sm:text-xl md:text-2xl font-bold mb-0.5 ${
+                  timeElapsed >= MAX_TIME_SECONDS ? 'text-red-600' : 'text-blue-600'
+                }`}>
+                  {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}
                 </div>
-                <div className="text-[8px] sm:text-[9px] text-gray-600">Time remaining</div>
+                <div className="text-[8px] sm:text-[9px] text-gray-600">
+                  {timeElapsed >= MAX_TIME_SECONDS ? "Time's up!" : 'Time elapsed'}
+                </div>
+                <div className="text-[8px] sm:text-[9px] text-gray-600 mt-0.5">
+                  {MAX_GUESSES - guessCount} {MAX_GUESSES - guessCount === 1 ? 'guess' : 'guesses'} remaining
+                </div>
               </div>
+
+              {timeElapsed >= MAX_TIME_SECONDS && (
+                <div className="mb-2 p-2 bg-red-50 border-2 border-red-300 rounded-lg">
+                  <p className="text-xs sm:text-sm text-red-800 font-semibold text-center">
+                    Incorrect, you wont get it i promise
+                  </p>
+                </div>
+              )}
+
+              {wrongGuesses.length > 0 && (
+                <div className="mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="text-[9px] sm:text-[10px] font-medium text-gray-700 mb-1">
+                    Wrong guesses:
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {wrongGuesses.map((guess, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[9px] sm:text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded"
+                      >
+                        {guess}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="mb-1 sm:mb-1.5">
                 <img
@@ -489,7 +566,7 @@ function Today() {
                     id="answer"
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
-                    disabled={submitted || timeLeft === 0}
+                    disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES}
                     className="w-full px-2 py-1 text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                     placeholder="Enter your answer..."
                     autoFocus
@@ -498,7 +575,7 @@ function Today() {
                 </div>
                 <button
                   type="submit"
-                  disabled={submitted || timeLeft === 0 || !answer.trim() || isSubmitting}
+                  disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES || !answer.trim() || isSubmitting}
                   className="w-full bg-blue-600 text-white py-1.5 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Answer'}
