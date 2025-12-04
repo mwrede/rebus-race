@@ -4,7 +4,6 @@ import Today from './pages/Today';
 import Leaderboard from './pages/Leaderboard';
 import Archive from './pages/Archive';
 import ArchiveDetail from './pages/ArchiveDetail';
-import { getWins } from './lib/stats';
 import { getUsername, hasUsername } from './lib/username';
 import UsernamePrompt from './components/UsernamePrompt';
 import { supabase } from './lib/supabase';

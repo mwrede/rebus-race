@@ -286,26 +286,6 @@ function Today() {
     }
   };
 
-  const loadIncorrectPercentage = async (puzzleId: string) => {
-    try {
-      // Get all submissions for this puzzle
-      const { data: allSubmissions, error } = await supabase
-        .from('submissions')
-        .select('is_correct')
-        .eq('puzzle_id', puzzleId);
-
-      if (error) throw error;
-
-      if (allSubmissions && allSubmissions.length > 0) {
-        const incorrectCount = allSubmissions.filter((s: Submission) => !s.is_correct).length;
-        const percentage = (incorrectCount / allSubmissions.length) * 100;
-        setIncorrectPercentage(percentage);
-      }
-    } catch (error) {
-      console.error('Error loading incorrect percentage:', error);
-    }
-  };
-
   const loadRankingAndPastResults = async (
     puzzleId: string,
     submissionId: string,
