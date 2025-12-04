@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Puzzle, Submission } from '../types';
 import { getUsername } from '../lib/username';
+import { useTimer } from '../contexts/TimerContext';
 
 function ArchiveDetail() {
   const { id } = useParams<{ id: string }>();
@@ -22,9 +23,11 @@ function ArchiveDetail() {
   const [totalCorrect, setTotalCorrect] = useState<number>(0);
   const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
   const [guessCount, setGuessCount] = useState(0);
-  const [pastSubmissions, setPastSubmissions] = useState<Submission[]>([]);
   const [loadingStats, setLoadingStats] = useState(false);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
+  const [incorrectCount, setIncorrectCount] = useState<number>(0);
+  const [averageTime, setAverageTime] = useState<number | null>(null);
+  const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
 
@@ -41,7 +44,12 @@ function ArchiveDetail() {
     if (id) {
       loadPuzzle(id);
     }
-  }, [id]);
+
+    // Cleanup: reset timer when component unmounts
+    return () => {
+      setTimerActive(false);
+    };
+  }, [id, setTimerActive]);
 
   useEffect(() => {
     if (isReady && startTime !== null && !submitted) {
@@ -58,25 +66,56 @@ function ArchiveDetail() {
               const timeMs = MAX_TIME_SECONDS * 1000; // 5 minutes in ms
 
               try {
+                // Save all wrong guesses that were made before timeout
                 const username = getUsername();
-          const { data, error } = await supabase
-            .from('submissions')
-            .insert({
-              puzzle_id: puzzle.id,
-              anon_id: anonId,
-              answer: answer.trim() || '',
-              is_correct: false,
-              time_ms: timeMs,
-              username: username || null,
-              guess_count: MAX_GUESSES, // Timeout = used all guesses
-            })
-            .select()
-            .single();
+                for (let i = 0; i < wrongGuesses.length; i++) {
+                  await supabase
+                    .from('guesses')
+                    .insert({
+                      puzzle_id: puzzle.id,
+                      anon_id: anonId,
+                      guess: wrongGuesses[i],
+                      is_correct: false,
+                      guess_number: i + 1,
+                      time_ms: timeMs, // Use timeout time for all guesses
+                      username: username || null,
+                    });
+                }
+
+                // Save the final answer (if any) as a guess
+                if (answer.trim()) {
+                  await supabase
+                    .from('guesses')
+                    .insert({
+                      puzzle_id: puzzle.id,
+                      anon_id: anonId,
+                      guess: answer.trim(),
+                      is_correct: false,
+                      guess_number: wrongGuesses.length + 1,
+                      time_ms: timeMs,
+                      username: username || null,
+                    });
+                }
+
+                const { data, error } = await supabase
+                  .from('submissions')
+                  .insert({
+                    puzzle_id: puzzle.id,
+                    anon_id: anonId,
+                    answer: answer.trim() || '',
+                    is_correct: false,
+                    time_ms: timeMs,
+                    username: username || null,
+                    guess_count: MAX_GUESSES, // Timeout = used all guesses
+                  })
+                  .select()
+                  .single();
 
                 if (error) throw error;
 
                 setSubmission(data);
                 setSubmitted(true);
+                setTimerActive(false); // Re-enable navigation after timeout
                 // Don't set alreadyPlayed yet - let the result page show first
                 // Load incorrect percentage for timeout
                 await loadIncorrectPercentage(puzzle.id);
@@ -97,6 +136,7 @@ function ArchiveDetail() {
   const handleReady = () => {
     setIsReady(true);
     setStartTime(Date.now());
+    setTimerActive(true); // Lock in the player - hide nav and prevent navigation
   };
 
   const loadPuzzle = async (puzzleId: string) => {
@@ -127,7 +167,7 @@ function ArchiveDetail() {
           setPreviousSubmission(existingSubmission);
           setSubmitted(true);
           setSubmission(existingSubmission);
-          // Load ranking and past results if they got it correct
+          // Load ranking if they got it correct
           if (existingSubmission.is_correct) {
             await loadRankingAndPastResults(puzzleId, existingSubmission.id, existingSubmission.time_ms);
           } else {
@@ -143,12 +183,41 @@ function ArchiveDetail() {
     }
   };
 
+  const saveGuess = async (guessText: string, isCorrect: boolean, guessNumber: number) => {
+    if (!puzzle) return;
+    
+    try {
+      const username = getUsername();
+      const endTime = Date.now();
+      const timeMs = startTime ? endTime - startTime : 0;
+
+      await supabase
+        .from('guesses')
+        .insert({
+          puzzle_id: puzzle.id,
+          anon_id: anonId,
+          guess: guessText,
+          is_correct: isCorrect,
+          guess_number: guessNumber,
+          time_ms: timeMs,
+          username: username || null,
+        });
+    } catch (error) {
+      console.error('Error saving guess:', error);
+      // Don't show alert for guess saving errors - it's not critical
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!puzzle || !answer.trim() || submitted || isSubmitting || alreadyPlayed) return;
 
     const isCorrect = answer.trim().toLowerCase() === puzzle.answer.toLowerCase();
     const currentAnswer = answer.trim();
+    const currentGuessNumber = wrongGuesses.length + 1;
+
+    // Save this guess (whether correct or incorrect)
+    await saveGuess(currentAnswer, isCorrect, currentGuessNumber);
 
     if (isCorrect) {
       // Correct answer - submit immediately
@@ -180,6 +249,7 @@ function ArchiveDetail() {
 
         setSubmission(data);
         setSubmitted(true);
+        setTimerActive(false); // Re-enable navigation after submission
         // Don't set alreadyPlayed yet - let the result page show first
         // It will be set when they come back later
 
@@ -223,6 +293,7 @@ function ArchiveDetail() {
 
           setSubmission(data);
           setSubmitted(true);
+          setTimerActive(false); // Re-enable navigation after submission
           // Don't set alreadyPlayed yet - let the result page show first
           // Load incorrect percentage
           await loadIncorrectPercentage(puzzle.id);
@@ -250,43 +321,10 @@ function ArchiveDetail() {
       if (allError) throw allError;
 
       // Find user's rank (1-indexed)
-      const userRank =
-        allSubmissions?.findIndex((s: Submission) => s.id === submissionId) + 1 || null;
+      const userIndex = allSubmissions?.findIndex((s: Submission) => s.id === submissionId) ?? -1;
+      const userRank = userIndex >= 0 ? userIndex + 1 : null;
       setRank(userRank);
       setTotalCorrect(allSubmissions?.length || 0);
-
-      // Get today's date to filter for archive puzzles only
-      const today = new Date().toISOString().split('T')[0];
-
-      // Get all puzzles to check which are archive (date < today)
-      const { data: puzzles, error: puzzlesError } = await supabase
-        .from('puzzles')
-        .select('id, date');
-
-      if (puzzlesError) throw puzzlesError;
-
-      const archivePuzzleIds = new Set(
-        puzzles?.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id) || []
-      );
-
-      // Get user's past correct submissions for archive puzzles only (excluding current puzzle)
-      const { data: pastData, error: pastError } = await supabase
-        .from('submissions')
-        .select('*')
-        .eq('anon_id', anonId)
-        .eq('is_correct', true)
-        .neq('puzzle_id', puzzleId)
-        .order('time_ms', { ascending: true })
-        .limit(100); // Get more to filter out daily puzzles
-
-      if (pastError) throw pastError;
-
-      // Filter to only archive puzzles and limit to 10
-      const archivePastSubmissions = (pastData || []).filter(
-        (s: Submission) => archivePuzzleIds.has(s.puzzle_id)
-      ).slice(0, 10);
-
-      setPastSubmissions(archivePastSubmissions);
     } catch (error) {
       console.error('Error loading ranking and past results:', error);
     } finally {
@@ -299,15 +337,28 @@ function ArchiveDetail() {
       // Get all submissions for this puzzle
       const { data: allSubmissions, error } = await supabase
         .from('submissions')
-        .select('is_correct')
+        .select('is_correct, time_ms')
         .eq('puzzle_id', puzzleId);
 
       if (error) throw error;
 
       if (allSubmissions && allSubmissions.length > 0) {
-        const incorrectCount = allSubmissions.filter((s: Submission) => !s.is_correct).length;
+        const incorrect = allSubmissions.filter((s: Submission) => !s.is_correct);
+        const correct = allSubmissions.filter((s: Submission) => s.is_correct);
+        
+        const incorrectCount = incorrect.length;
         const percentage = (incorrectCount / allSubmissions.length) * 100;
         setIncorrectPercentage(percentage);
+        setIncorrectCount(incorrectCount);
+        
+        // Calculate average time for correct submissions
+        if (correct.length > 0) {
+          const totalTime = correct.reduce((sum: number, s: Submission) => sum + s.time_ms, 0);
+          const avgTime = totalTime / correct.length;
+          setAverageTime(avgTime);
+        } else {
+          setAverageTime(null);
+        }
       }
     } catch (error) {
       console.error('Error loading incorrect percentage:', error);
@@ -363,14 +414,18 @@ function ArchiveDetail() {
   const day = parseInt(dateParts[2]);
   const puzzleDate = new Date(year, month, day);
 
+  const { isTimerActive } = useTimer();
+
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
-      <Link
-        to="/archive"
-        className="text-blue-600 hover:text-blue-800 mb-1 sm:mb-2 inline-block text-[10px] sm:text-xs md:text-sm"
-      >
-        ← Back to Archive
-      </Link>
+      {!isTimerActive && !submitted && (
+        <Link
+          to="/archive"
+          className="text-blue-600 hover:text-blue-800 mb-1 sm:mb-2 inline-block text-[10px] sm:text-xs md:text-sm"
+        >
+          ← Back to Archive
+        </Link>
+      )}
 
       <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-1 sm:mb-2">
         Puzzle from {puzzleDate.toLocaleDateString('en-US', {
@@ -427,105 +482,28 @@ function ArchiveDetail() {
                             Rank: #{rank}
                           </div>
                           <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">
-                            out of {totalCorrect} correct {totalCorrect === 1 ? 'submission' : 'submissions'}
+                            out of {totalCorrect} {totalCorrect === 1 ? 'person' : 'people'} got it right
                           </div>
                         </div>
                       )}
 
-                      {pastSubmissions.length > 0 && (
-                        <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-200">
-                          <div className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 mb-1.5 sm:mb-2">
-                            Compared to Your Past Archive Results
+                      <div className="mt-2 sm:mt-3 md:mt-4 space-y-2 sm:space-y-3">
+                        {incorrectCount > 0 && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3">
+                            <div className="text-xs sm:text-sm font-semibold text-red-700">
+                              {incorrectCount} {incorrectCount === 1 ? 'person' : 'people'} got it wrong
+                            </div>
                           </div>
-                          {(() => {
-                            const bestPastTime = Math.min(
-                              ...pastSubmissions.map((p) => p.time_ms)
-                            );
-                            const worstPastTime = Math.max(
-                              ...pastSubmissions.map((p) => p.time_ms)
-                            );
-                            const avgPastTime =
-                              pastSubmissions.reduce((sum, p) => sum + p.time_ms, 0) /
-                              pastSubmissions.length;
-                            const isNewBest = previousSubmission.time_ms < bestPastTime;
-                            const isFasterThanBest = previousSubmission.time_ms < bestPastTime;
-                            const isSlowerThanBest = previousSubmission.time_ms > bestPastTime;
-                            const timeDiffFromBest = Math.abs(
-                              previousSubmission.time_ms - bestPastTime
-                            );
-                            const timeDiffFromAvg = Math.abs(
-                              previousSubmission.time_ms - avgPastTime
-                            );
-
-                            return (
-                              <div className="space-y-2 sm:space-y-3">
-                                <div
-                                  className={`p-2 sm:p-3 rounded-lg ${
-                                    isNewBest
-                                      ? 'bg-green-50 border-2 border-green-200'
-                                      : isFasterThanBest
-                                      ? 'bg-green-50'
-                                      : 'bg-gray-50'
-                                  }`}
-                                >
-                                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0">
-                                    <span className="text-xs sm:text-sm font-medium text-gray-700">
-                                      {isNewBest
-                                        ? '🎉 New personal best!'
-                                        : isFasterThanBest
-                                        ? `✓ ${(timeDiffFromBest / 1000).toFixed(2)}s faster than your best`
-                                        : isSlowerThanBest
-                                        ? `✗ ${(timeDiffFromBest / 1000).toFixed(2)}s slower than your best`
-                                        : '= Same as your best'}
-                                    </span>
-                                    <span className="text-xs sm:text-sm font-semibold text-gray-900">
-                                      Best: {(bestPastTime / 1000).toFixed(2)}s
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 text-[10px] sm:text-xs md:text-sm">
-                                  <div className="bg-gray-50 p-1.5 sm:p-2 rounded">
-                                    <div className="text-gray-600 text-[10px] sm:text-xs">Average</div>
-                                    <div className="font-semibold text-gray-900 text-xs sm:text-sm">
-                                      {(avgPastTime / 1000).toFixed(2)}s
-                                    </div>
-                                    {previousSubmission.time_ms < avgPastTime && (
-                                      <div className="text-green-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1">
-                                        ✓ {(timeDiffFromAvg / 1000).toFixed(2)}s faster
-                                      </div>
-                                    )}
-                                    {previousSubmission.time_ms > avgPastTime && (
-                                      <div className="text-red-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1">
-                                        ✗ {(timeDiffFromAvg / 1000).toFixed(2)}s slower
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="bg-gray-50 p-1.5 sm:p-2 rounded">
-                                    <div className="text-gray-600 text-[10px] sm:text-xs">Slowest</div>
-                                    <div className="font-semibold text-gray-900 text-xs sm:text-sm">
-                                      {(worstPastTime / 1000).toFixed(2)}s
-                                    </div>
-                                    {previousSubmission.time_ms < worstPastTime && (
-                                      <div className="text-green-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1">
-                                        ✓ Faster than worst
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="text-[10px] sm:text-xs text-gray-500 text-center">
-                                  Based on {pastSubmissions.length} past archive{' '}
-                                  {pastSubmissions.length === 1 ? 'result' : 'results'}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-                      {pastSubmissions.length === 0 && (
-                        <div className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-gray-600">
-                          This was your first correct archive submission! 🎉
-                        </div>
-                      )}
+                        )}
+                        
+                        {averageTime !== null && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3">
+                            <div className="text-xs sm:text-sm font-semibold text-blue-700">
+                              Average buzz time: {(averageTime / 1000).toFixed(2)}s
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
                 </>
@@ -709,105 +687,28 @@ function ArchiveDetail() {
                           Rank: #{rank}
                         </div>
                         <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">
-                          out of {totalCorrect} correct {totalCorrect === 1 ? 'submission' : 'submissions'}
+                          out of {totalCorrect} {totalCorrect === 1 ? 'person' : 'people'} got it right
                         </div>
                       </div>
                     )}
 
-                    {pastSubmissions.length > 0 && (
-                      <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-200">
-                        <div className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 mb-1.5 sm:mb-2">
-                          Compared to Your Past Archive Results
+                    <div className="mt-2 sm:mt-3 md:mt-4 space-y-2 sm:space-y-3">
+                      {incorrectCount > 0 && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3">
+                          <div className="text-xs sm:text-sm font-semibold text-red-700">
+                            {incorrectCount} {incorrectCount === 1 ? 'person' : 'people'} got it wrong
+                          </div>
                         </div>
-                        {(() => {
-                          const bestPastTime = Math.min(
-                            ...pastSubmissions.map((p) => p.time_ms)
-                          );
-                          const worstPastTime = Math.max(
-                            ...pastSubmissions.map((p) => p.time_ms)
-                          );
-                          const avgPastTime =
-                            pastSubmissions.reduce((sum, p) => sum + p.time_ms, 0) /
-                            pastSubmissions.length;
-                          const isNewBest = submission.time_ms < bestPastTime;
-                          const isFasterThanBest = submission.time_ms < bestPastTime;
-                          const isSlowerThanBest = submission.time_ms > bestPastTime;
-                          const timeDiffFromBest = Math.abs(
-                            submission.time_ms - bestPastTime
-                          );
-                          const timeDiffFromAvg = Math.abs(
-                            submission.time_ms - avgPastTime
-                          );
-
-                          return (
-                            <div className="space-y-2 sm:space-y-3">
-                              <div
-                                className={`p-2 sm:p-3 rounded-lg ${
-                                  isNewBest
-                                    ? 'bg-green-50 border-2 border-green-200'
-                                    : isFasterThanBest
-                                    ? 'bg-green-50'
-                                    : 'bg-gray-50'
-                                }`}
-                              >
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0">
-                                  <span className="text-xs sm:text-sm font-medium text-gray-700">
-                                    {isNewBest
-                                      ? '🎉 New personal best!'
-                                      : isFasterThanBest
-                                      ? `✓ ${(timeDiffFromBest / 1000).toFixed(2)}s faster than your best`
-                                      : isSlowerThanBest
-                                      ? `✗ ${(timeDiffFromBest / 1000).toFixed(2)}s slower than your best`
-                                      : '= Same as your best'}
-                                  </span>
-                                  <span className="text-xs sm:text-sm font-semibold text-gray-900">
-                                    Best: {(bestPastTime / 1000).toFixed(2)}s
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 text-[10px] sm:text-xs md:text-sm">
-                                <div className="bg-gray-50 p-1.5 sm:p-2 rounded">
-                                  <div className="text-gray-600 text-[10px] sm:text-xs">Average</div>
-                                  <div className="font-semibold text-gray-900 text-xs sm:text-sm">
-                                    {(avgPastTime / 1000).toFixed(2)}s
-                                  </div>
-                                  {submission.time_ms < avgPastTime && (
-                                    <div className="text-green-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1">
-                                      ✓ {(timeDiffFromAvg / 1000).toFixed(2)}s faster
-                                    </div>
-                                  )}
-                                  {submission.time_ms > avgPastTime && (
-                                    <div className="text-red-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1">
-                                      ✗ {(timeDiffFromAvg / 1000).toFixed(2)}s slower
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="bg-gray-50 p-1.5 sm:p-2 rounded">
-                                  <div className="text-gray-600 text-[10px] sm:text-xs">Slowest</div>
-                                  <div className="font-semibold text-gray-900 text-xs sm:text-sm">
-                                    {(worstPastTime / 1000).toFixed(2)}s
-                                  </div>
-                                  {submission.time_ms < worstPastTime && (
-                                    <div className="text-green-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1">
-                                      ✓ Faster than worst
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="text-[10px] sm:text-xs text-gray-500 text-center">
-                                Based on {pastSubmissions.length} past archive{' '}
-                                {pastSubmissions.length === 1 ? 'result' : 'results'}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    )}
-                    {pastSubmissions.length === 0 && (
-                      <div className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-gray-600">
-                        This is your first correct archive submission! 🎉
-                      </div>
-                    )}
+                      )}
+                      
+                      {averageTime !== null && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3">
+                          <div className="text-xs sm:text-sm font-semibold text-blue-700">
+                            Average buzz time: {(averageTime / 1000).toFixed(2)}s
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
               </>

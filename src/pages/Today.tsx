@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Puzzle, Submission } from '../types';
 import { incrementWin } from '../lib/stats';
 import { getUsername } from '../lib/username';
+import { useTimer } from '../contexts/TimerContext';
 
 function Today() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
@@ -27,6 +28,7 @@ function Today() {
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
   const [guessCount, setGuessCount] = useState(0);
+  const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
 
@@ -41,7 +43,12 @@ function Today() {
 
     // Load today's puzzle
     loadTodayPuzzle();
-  }, []);
+
+    // Cleanup: reset timer when component unmounts
+    return () => {
+      setTimerActive(false);
+    };
+  }, [setTimerActive]);
 
   useEffect(() => {
     if (isReady && startTime !== null && !submitted) {
@@ -58,7 +65,37 @@ function Today() {
               const timeMs = MAX_TIME_SECONDS * 1000; // 5 minutes in ms
 
               try {
+                // Save all wrong guesses that were made before timeout
                 const username = getUsername();
+                for (let i = 0; i < wrongGuesses.length; i++) {
+                  await supabase
+                    .from('guesses')
+                    .insert({
+                      puzzle_id: puzzle.id,
+                      anon_id: anonId,
+                      guess: wrongGuesses[i],
+                      is_correct: false,
+                      guess_number: i + 1,
+                      time_ms: timeMs, // Use timeout time for all guesses
+                      username: username || null,
+                    });
+                }
+
+                // Save the final answer (if any) as a guess
+                if (answer.trim()) {
+                  await supabase
+                    .from('guesses')
+                    .insert({
+                      puzzle_id: puzzle.id,
+                      anon_id: anonId,
+                      guess: answer.trim(),
+                      is_correct: false,
+                      guess_number: wrongGuesses.length + 1,
+                      time_ms: timeMs,
+                      username: username || null,
+                    });
+                }
+
                 const { data, error } = await supabase
                   .from('submissions')
                   .insert({
@@ -68,6 +105,7 @@ function Today() {
                     is_correct: false,
                     time_ms: timeMs,
                     username: username || null,
+                    guess_count: MAX_GUESSES,
                   })
                   .select()
                   .single();
@@ -76,6 +114,7 @@ function Today() {
 
                 setSubmission(data);
                 setSubmitted(true);
+                setTimerActive(false); // Re-enable navigation after timeout
                 // Load incorrect percentage for timeout case
                 await loadIncorrectPercentage(puzzle.id);
                 // Load all-time stats even if incorrect
@@ -97,6 +136,7 @@ function Today() {
   const handleReady = () => {
     setIsReady(true);
     setStartTime(Date.now());
+    setTimerActive(true); // Lock in the player - hide nav and prevent navigation
   };
 
   const loadTodayPuzzle = async () => {
@@ -356,12 +396,41 @@ function Today() {
     }
   };
 
+  const saveGuess = async (guessText: string, isCorrect: boolean, guessNumber: number) => {
+    if (!puzzle) return;
+    
+    try {
+      const username = getUsername();
+      const endTime = Date.now();
+      const timeMs = startTime ? endTime - startTime : 0;
+
+      await supabase
+        .from('guesses')
+        .insert({
+          puzzle_id: puzzle.id,
+          anon_id: anonId,
+          guess: guessText,
+          is_correct: isCorrect,
+          guess_number: guessNumber,
+          time_ms: timeMs,
+          username: username || null,
+        });
+    } catch (error) {
+      console.error('Error saving guess:', error);
+      // Don't show alert for guess saving errors - it's not critical
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!puzzle || !answer.trim() || submitted || isSubmitting) return;
 
     const isCorrect = answer.trim().toLowerCase() === puzzle.answer.toLowerCase();
     const currentAnswer = answer.trim();
+    const currentGuessNumber = wrongGuesses.length + 1;
+
+    // Save this guess (whether correct or incorrect)
+    await saveGuess(currentAnswer, isCorrect, currentGuessNumber);
 
     if (isCorrect) {
       // Correct answer - submit immediately
@@ -393,6 +462,7 @@ function Today() {
 
         setSubmission(data);
         setSubmitted(true);
+        setTimerActive(false); // Re-enable navigation after submission
 
         // Increment win count
         incrementWin(puzzle.id);
@@ -438,6 +508,7 @@ function Today() {
 
           setSubmission(data);
           setSubmitted(true);
+          setTimerActive(false); // Re-enable navigation after submission
           // Load incorrect percentage
           await loadIncorrectPercentage(puzzle.id);
           // Load all-time stats even if incorrect

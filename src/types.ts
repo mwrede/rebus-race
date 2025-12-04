@@ -18,3 +18,16 @@ export interface Submission {
   guess_count?: number | null;
 }
 
+export interface Guess {
+  id: string;
+  puzzle_id: string;
+  anon_id: string | null;
+  user_id: string | null;
+  username: string | null;
+  guess: string;
+  is_correct: boolean;
+  guess_number: number;
+  time_ms: number | null;
+  created_at: string;
+}
+

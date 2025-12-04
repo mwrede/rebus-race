@@ -8,32 +8,27 @@ interface AllTimeEntry {
   averageGuesses: number;
   puzzlesWon: number;
   anon_id: string;
-}
-
-interface StreakEntry {
-  username: string | null;
   streak: number;
-  anon_id: string;
 }
 
 function Leaderboard() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [submissionsByGuesses, setSubmissionsByGuesses] = useState<Submission[]>([]);
   const [incorrectSubmissions, setIncorrectSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [averageTime, setAverageTime] = useState<number | null>(null);
   const [correctPercentage, setCorrectPercentage] = useState<number | null>(null);
   const [allTimeLeaderboard, setAllTimeLeaderboard] = useState<AllTimeEntry[]>([]);
-  const [allTimeLeaderboardByGuesses, setAllTimeLeaderboardByGuesses] = useState<AllTimeEntry[]>([]);
-  const [streakLeaderboard, setStreakLeaderboard] = useState<StreakEntry[]>([]);
   const [loadingAllTime, setLoadingAllTime] = useState(true);
-  const [loadingStreak, setLoadingStreak] = useState(true);
+  const [currentAnonId, setCurrentAnonId] = useState<string>('');
 
   useEffect(() => {
+    // Get current user's anon_id
+    const anonId = localStorage.getItem('rebus_anon_id') || '';
+    setCurrentAnonId(anonId);
+    
     loadLeaderboard();
     loadAllTimeLeaderboard();
-    loadStreakLeaderboard();
   }, []);
 
   const loadLeaderboard = async () => {
@@ -68,18 +63,6 @@ function Leaderboard() {
         // Sort by time (fastest first)
         const sortedByTime = [...correctSubmissions].sort((a: Submission, b: Submission) => a.time_ms - b.time_ms);
         setSubmissions(sortedByTime.slice(0, 100));
-        
-        // Sort by guesses (least first), then by time as tiebreaker
-        const sortedByGuesses = [...correctSubmissions].sort((a: Submission, b: Submission) => {
-          const aGuesses = a.guess_count || 999; // Treat null as high number
-          const bGuesses = b.guess_count || 999;
-          if (aGuesses !== bGuesses) {
-            return aGuesses - bGuesses;
-          }
-          // Tiebreaker: faster time wins
-          return a.time_ms - b.time_ms;
-        });
-        setSubmissionsByGuesses(sortedByGuesses.slice(0, 100));
 
         // Get incorrect submissions (ordered by submission time, most recent first)
         const incorrectSubs = (allSubmissionsData || []).filter((s: Submission) => !s.is_correct);
@@ -167,104 +150,37 @@ function Leaderboard() {
         }
       });
 
-      // Convert to leaderboard entries
-      const entries: AllTimeEntry[] = Array.from(userStats.entries())
-        .map(([anon_id, stats]) => {
-          const totalTime = stats.times.reduce((sum, time) => sum + time, 0);
-          const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
-          const totalGuesses = stats.guesses.reduce((sum, guess) => sum + guess, 0);
-          const averageGuesses = stats.guesses.length > 0 ? totalGuesses / stats.guesses.length : 0;
-
-          return {
-            anon_id,
-            username: stats.username,
-            averageTime,
-            averageGuesses,
-            puzzlesWon: stats.puzzles.size,
-          };
-        })
-        .filter((entry) => entry.puzzlesWon >= 1); // At least 1 puzzle won
-
-      // Sort by average time (ascending - fastest first)
-      const sortedByTime = [...entries].sort((a, b) => {
-        if (a.averageTime === 0 && b.averageTime === 0) return 0;
-        if (a.averageTime === 0) return 1;
-        if (b.averageTime === 0) return -1;
-        return a.averageTime - b.averageTime;
-      });
-      setAllTimeLeaderboard(sortedByTime);
-
-      // Sort by average guesses (ascending - least first), then by average time as tiebreaker
-      const sortedByGuesses = [...entries].sort((a, b) => {
-        if (a.averageGuesses === 0 && b.averageGuesses === 0) {
-          // Both have no guesses data, sort by time
-          return a.averageTime - b.averageTime;
-        }
-        if (a.averageGuesses === 0) return 1;
-        if (b.averageGuesses === 0) return -1;
-        if (a.averageGuesses !== b.averageGuesses) {
-          return a.averageGuesses - b.averageGuesses;
-        }
-        // Tiebreaker: faster average time wins
-        return a.averageTime - b.averageTime;
-      });
-      setAllTimeLeaderboardByGuesses(sortedByGuesses);
-    } catch (error) {
-      console.error('Error loading all-time leaderboard:', error);
-    } finally {
-      setLoadingAllTime(false);
-    }
-  };
-
-  const loadStreakLeaderboard = async () => {
-    try {
-      setLoadingStreak(true);
-      // Get today's date to filter out archive puzzles
-      const today = new Date().toISOString().split('T')[0];
-
-      // Get all puzzles to check which are archive (date < today)
-      const { data: puzzles, error: puzzlesError } = await supabase
-        .from('puzzles')
-        .select('id, date')
-        .order('date', { ascending: false });
-
-      if (puzzlesError) throw puzzlesError;
-
-      const archivePuzzleIds = new Set(
-        puzzles?.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id) || []
-      );
-
-      // Get all daily puzzles ordered by date (newest first)
+      // Get all daily puzzles ordered by date (newest first) for streak calculation
       const dailyPuzzles = puzzles?.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id)) || [];
       dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
 
-      // Get all submissions for daily puzzles
-      const { data: submissions, error: submissionsError } = await supabase
+      // Get all submissions (both correct and incorrect) for daily puzzles to calculate streaks
+      const { data: allSubmissions, error: allSubmissionsError } = await supabase
         .from('submissions')
         .select('anon_id, puzzle_id, is_correct, username, created_at')
         .order('created_at', { ascending: false });
 
-      if (submissionsError) throw submissionsError;
+      if (allSubmissionsError) throw allSubmissionsError;
 
       // Filter to only daily puzzles
-      const dailySubmissions = (submissions || []).filter(
+      const dailyAllSubmissions = (allSubmissions || []).filter(
         (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
       );
 
-      // Group submissions by anon_id
-      const userSubmissions = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
+      // Group submissions by anon_id for streak calculation
+      const userSubmissionsForStreak = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
       
-      dailySubmissions.forEach((s: Submission) => {
+      dailyAllSubmissions.forEach((s: Submission) => {
         if (!s.anon_id) return;
         
-        if (!userSubmissions.has(s.anon_id)) {
-          userSubmissions.set(s.anon_id, {
+        if (!userSubmissionsForStreak.has(s.anon_id)) {
+          userSubmissionsForStreak.set(s.anon_id, {
             username: s.username || null,
             submissions: new Map(),
           });
         }
         
-        const userData = userSubmissions.get(s.anon_id)!;
+        const userData = userSubmissionsForStreak.get(s.anon_id)!;
         // Only keep the most recent submission for each puzzle
         if (!userData.submissions.has(s.puzzle_id)) {
           userData.submissions.set(s.puzzle_id, s.is_correct);
@@ -275,10 +191,9 @@ function Leaderboard() {
         }
       });
 
-      // Calculate streak for each user
-      const streakEntries: StreakEntry[] = [];
-      
-      userSubmissions.forEach((userData, anon_id) => {
+      // Calculate streaks for each user
+      const streakMap = new Map<string, number>();
+      userSubmissionsForStreak.forEach((userData, anon_id) => {
         let currentStreak = 0;
         
         // Count consecutive wins from most recent puzzle backwards
@@ -296,25 +211,44 @@ function Leaderboard() {
           }
         }
         
-        if (currentStreak > 0) {
-          streakEntries.push({
-            anon_id,
-            username: userData.username,
-            streak: currentStreak,
-          });
-        }
+        streakMap.set(anon_id, currentStreak);
       });
 
-      // Sort by streak (descending)
-      streakEntries.sort((a, b) => b.streak - a.streak);
-      
-      setStreakLeaderboard(streakEntries);
+      // Convert to leaderboard entries with streaks
+      const entries: AllTimeEntry[] = Array.from(userStats.entries())
+        .map(([anon_id, stats]) => {
+          const totalTime = stats.times.reduce((sum, time) => sum + time, 0);
+          const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
+          const totalGuesses = stats.guesses.reduce((sum, guess) => sum + guess, 0);
+          const averageGuesses = stats.guesses.length > 0 ? totalGuesses / stats.guesses.length : 0;
+          const streak = streakMap.get(anon_id) || 0;
+
+          return {
+            anon_id,
+            username: stats.username,
+            averageTime,
+            averageGuesses,
+            puzzlesWon: stats.puzzles.size,
+            streak,
+          };
+        })
+        .filter((entry) => entry.puzzlesWon >= 1); // At least 1 puzzle won
+
+      // Sort by average time (ascending - fastest first)
+      const sortedByTime = [...entries].sort((a, b) => {
+        if (a.averageTime === 0 && b.averageTime === 0) return 0;
+        if (a.averageTime === 0) return 1;
+        if (b.averageTime === 0) return -1;
+        return a.averageTime - b.averageTime;
+      });
+      setAllTimeLeaderboard(sortedByTime);
     } catch (error) {
-      console.error('Error loading streak leaderboard:', error);
+      console.error('Error loading all-time leaderboard:', error);
     } finally {
-      setLoadingStreak(false);
+      setLoadingAllTime(false);
     }
   };
+
 
   if (loading) {
     return (
@@ -362,11 +296,8 @@ function Leaderboard() {
         </div>
       ) : (
         <>
-          {/* Today's Leaderboard - By Time */}
+          {/* Today's Leaderboard */}
           <div className="mb-6 sm:mb-8">
-            <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3 text-center">
-              Ranked by Lowest Time
-            </h2>
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -387,10 +318,12 @@ function Leaderboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {submissions.map((submission, index) => (
+                    {submissions.map((submission, index) => {
+                      const isCurrentUser = submission.anon_id === currentAnonId;
+                      return (
                       <tr
                         key={submission.id}
-                        className={index < 3 ? 'bg-yellow-50' : ''}
+                        className={`${index < 3 ? 'bg-yellow-50' : ''} ${isCurrentUser ? 'ring-2 ring-blue-500 bg-blue-100' : ''}`}
                       >
                         <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -418,11 +351,14 @@ function Leaderboard() {
                           </span>
                         </td>
                       </tr>
-                    ))}
-                    {incorrectSubmissions.map((submission) => (
+                      );
+                    })}
+                    {incorrectSubmissions.map((submission) => {
+                      const isCurrentUser = submission.anon_id === currentAnonId;
+                      return (
                       <tr
                         key={submission.id}
-                        className="bg-red-50"
+                        className={`bg-red-50 ${isCurrentUser ? 'ring-2 ring-blue-500 bg-red-200' : ''}`}
                       >
                         <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
                           <span className="text-[10px] sm:text-xs md:text-sm font-medium text-red-600">
@@ -445,70 +381,8 @@ function Leaderboard() {
                           </span>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          {/* Today's Leaderboard - By Guesses */}
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3 text-center">
-              Ranked by Least Guesses
-            </h2>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rank
-                      </th>
-                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Username
-                      </th>
-                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Guesses
-                      </th>
-                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Time
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {submissionsByGuesses.map((submission, index) => (
-                      <tr
-                        key={submission.id}
-                        className={index < 3 ? 'bg-yellow-50' : ''}
-                      >
-                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            {index === 0 && <span className="text-lg sm:text-xl md:text-2xl mr-0.5 sm:mr-1 md:mr-2">🥇</span>}
-                            {index === 1 && <span className="text-lg sm:text-xl md:text-2xl mr-0.5 sm:mr-1 md:mr-2">🥈</span>}
-                            {index === 2 && <span className="text-lg sm:text-xl md:text-2xl mr-0.5 sm:mr-1 md:mr-2">🥉</span>}
-                            <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-900">
-                              #{index + 1}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                          <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-900 truncate max-w-[100px] sm:max-w-none">
-                            {submission.username || 'Anonymous'}
-                          </span>
-                        </td>
-                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                          <span className="text-[10px] sm:text-xs md:text-sm text-gray-900 font-semibold">
-                            {submission.guess_count || '—'}
-                          </span>
-                        </td>
-                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                          <span className="text-[10px] sm:text-xs md:text-sm text-gray-900 font-semibold">
-                            {(submission.time_ms / 1000).toFixed(2)}s
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -533,11 +407,8 @@ function Leaderboard() {
           </div>
         ) : (
           <>
-            {/* All-Time Leaderboard - By Average Time */}
+            {/* All-Time Leaderboard */}
             <div className="mb-6 sm:mb-8">
-              <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3 text-center">
-                Ranked by Lowest Average Time
-              </h3>
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -558,13 +429,18 @@ function Leaderboard() {
                         <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Games Won
                         </th>
+                        <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Streak
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {allTimeLeaderboard.map((entry, index) => (
+                      {allTimeLeaderboard.map((entry, index) => {
+                        const isCurrentUser = entry.anon_id === currentAnonId;
+                        return (
                         <tr
                           key={entry.anon_id}
-                          className={index < 3 ? 'bg-yellow-50' : ''}
+                          className={`${index < 3 ? 'bg-yellow-50' : ''} ${isCurrentUser ? 'ring-2 ring-blue-500 bg-blue-100' : ''}`}
                         >
                           <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
                             <div className="flex items-center">
@@ -596,79 +472,14 @@ function Leaderboard() {
                               {entry.puzzlesWon}
                             </span>
                           </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* All-Time Leaderboard - By Average Guesses */}
-            <div className="mb-6 sm:mb-8">
-              <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3 text-center">
-                Ranked by Lowest Average Guesses
-              </h3>
-              <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Rank
-                        </th>
-                        <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Username
-                        </th>
-                        <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Avg Guesses
-                        </th>
-                        <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Avg Time
-                        </th>
-                        <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Games Won
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {allTimeLeaderboardByGuesses.map((entry, index) => (
-                        <tr
-                          key={entry.anon_id}
-                          className={index < 3 ? 'bg-yellow-50' : ''}
-                        >
                           <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              {index === 0 && <span className="text-lg sm:text-xl md:text-2xl mr-0.5 sm:mr-1 md:mr-2">🥇</span>}
-                              {index === 1 && <span className="text-lg sm:text-xl md:text-2xl mr-0.5 sm:mr-1 md:mr-2">🥈</span>}
-                              {index === 2 && <span className="text-lg sm:text-xl md:text-2xl mr-0.5 sm:mr-1 md:mr-2">🥉</span>}
-                              <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-900">
-                                #{index + 1}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                            <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-900 truncate max-w-[100px] sm:max-w-none">
-                              {entry.username || 'Anonymous'}
-                            </span>
-                          </td>
-                          <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                            <span className="text-[10px] sm:text-xs md:text-sm text-gray-900 font-semibold">
-                              {entry.averageGuesses > 0 ? entry.averageGuesses.toFixed(1) : '—'}
-                            </span>
-                          </td>
-                          <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                            <span className="text-[10px] sm:text-xs md:text-sm text-gray-900 font-semibold">
-                              {(entry.averageTime / 1000).toFixed(2)}s
-                            </span>
-                          </td>
-                          <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                            <span className="text-[10px] sm:text-xs md:text-sm text-gray-900 font-semibold">
-                              {entry.puzzlesWon}
+                            <span className="text-[10px] sm:text-xs md:text-sm text-orange-600 font-semibold">
+                              {entry.streak > 0 ? `🔥 ${entry.streak}` : '—'}
                             </span>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -678,74 +489,6 @@ function Leaderboard() {
         )}
       </div>
 
-      {/* Streak Leaderboard */}
-      <div className="mt-6 sm:mt-8 md:mt-12">
-        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4 text-center">
-          🔥 Winning Streak Leaderboard
-        </h2>
-        <p className="text-center text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
-          Longest consecutive wins on daily puzzles
-        </p>
-
-        {loadingStreak ? (
-          <div className="flex justify-center items-center min-h-[200px]">
-            <div className="text-gray-600 text-sm">Loading streak leaderboard...</div>
-          </div>
-        ) : streakLeaderboard.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-6 sm:p-8 text-center">
-            <p className="text-gray-600 text-sm">No streaks yet. Be the first to start one!</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Rank
-                    </th>
-                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Username
-                    </th>
-                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Streak
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {streakLeaderboard.map((entry, index) => (
-                    <tr
-                      key={entry.anon_id}
-                      className={index < 3 ? 'bg-yellow-50' : ''}
-                    >
-                      <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {index === 0 && <span className="text-lg sm:text-xl md:text-2xl mr-0.5 sm:mr-1 md:mr-2">🥇</span>}
-                          {index === 1 && <span className="text-lg sm:text-xl md:text-2xl mr-0.5 sm:mr-1 md:mr-2">🥈</span>}
-                          {index === 2 && <span className="text-lg sm:text-xl md:text-2xl mr-0.5 sm:mr-1 md:mr-2">🥉</span>}
-                          <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-900">
-                            #{index + 1}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                        <span className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-900 truncate max-w-[100px] sm:max-w-none">
-                          {entry.username || 'Anonymous'}
-                        </span>
-                      </td>
-                      <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
-                        <span className="text-[10px] sm:text-xs md:text-sm text-orange-600 font-semibold">
-                          🔥 {entry.streak}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

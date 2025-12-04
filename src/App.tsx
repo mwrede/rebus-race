@@ -8,6 +8,7 @@ import { getUsername, hasUsername } from './lib/username';
 import UsernamePrompt from './components/UsernamePrompt';
 import { supabase } from './lib/supabase';
 import { Submission } from './types';
+import { TimerProvider, useTimer } from './contexts/TimerContext';
 
 function App() {
   const [allTimeRank, setAllTimeRank] = useState<number | null>(null);
@@ -245,11 +246,42 @@ function App() {
 
   return (
     <BrowserRouter>
+      <TimerProvider>
+        <AppContent
+          showUsernamePrompt={showUsernamePrompt}
+          handleUsernameComplete={handleUsernameComplete}
+          username={username}
+          streak={streak}
+          allTimeRank={allTimeRank}
+        />
+      </TimerProvider>
+    </BrowserRouter>
+  );
+}
+
+function AppContent({
+  showUsernamePrompt,
+  handleUsernameComplete,
+  username,
+  streak,
+  allTimeRank,
+}: {
+  showUsernamePrompt: boolean;
+  handleUsernameComplete: (username: string) => void;
+  username: string | null;
+  streak: number;
+  allTimeRank: number | null;
+}) {
+  const { isTimerActive } = useTimer();
+
+  return (
+    <>
       {showUsernamePrompt && (
         <UsernamePrompt onComplete={handleUsernameComplete} />
       )}
       <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow-sm border-b sticky top-0 z-40">
+        {!isTimerActive && (
+          <nav className="bg-white shadow-sm border-b sticky top-0 z-40">
           <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
             <div className="flex justify-between items-center h-12 sm:h-14 md:h-16">
               <Link
@@ -294,6 +326,7 @@ function App() {
             </div>
           </div>
         </nav>
+        )}
 
         <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-2 sm:py-4 md:py-6 lg:py-8">
           <Routes>
@@ -305,7 +338,7 @@ function App() {
           </Routes>
         </main>
       </div>
-    </BrowserRouter>
+    </>
   );
 }
 
