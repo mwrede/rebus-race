@@ -673,13 +673,19 @@ function Today() {
             )}
           </div>
           {submitted && submission && !submission.is_correct && (
-            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center">
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
               <button
                 onClick={handleShare}
                 className="inline-flex items-center gap-1 sm:gap-2 bg-red-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-red-700 font-medium text-xs sm:text-sm md:text-base"
               >
                 <span>📤</span> <span>Share Result</span>
               </button>
+              <Link
+                to="/archive"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📚</span> <span>Browse Archive</span>
+              </Link>
             </div>
           )}
           {alreadyPlayed && previousSubmission && previousSubmission.is_correct && (
