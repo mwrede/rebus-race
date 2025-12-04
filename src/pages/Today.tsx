@@ -24,6 +24,7 @@ function Today() {
   const [isReady, setIsReady] = useState(false);
   const [allTimeRank, setAllTimeRank] = useState<number | null>(null);
   const [averageTime, setAverageTime] = useState<number | null>(null);
+  const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
 
   useEffect(() => {
     // Get or create anonymous ID
@@ -265,6 +266,46 @@ function Today() {
     }
   };
 
+  const loadIncorrectPercentage = async (puzzleId: string) => {
+    try {
+      // Get all submissions for this puzzle
+      const { data: allSubmissions, error } = await supabase
+        .from('submissions')
+        .select('is_correct')
+        .eq('puzzle_id', puzzleId);
+
+      if (error) throw error;
+
+      if (allSubmissions && allSubmissions.length > 0) {
+        const incorrectCount = allSubmissions.filter((s: Submission) => !s.is_correct).length;
+        const percentage = (incorrectCount / allSubmissions.length) * 100;
+        setIncorrectPercentage(percentage);
+      }
+    } catch (error) {
+      console.error('Error loading incorrect percentage:', error);
+    }
+  };
+
+  const loadIncorrectPercentage = async (puzzleId: string) => {
+    try {
+      // Get all submissions for this puzzle
+      const { data: allSubmissions, error } = await supabase
+        .from('submissions')
+        .select('is_correct')
+        .eq('puzzle_id', puzzleId);
+
+      if (error) throw error;
+
+      if (allSubmissions && allSubmissions.length > 0) {
+        const incorrectCount = allSubmissions.filter((s: Submission) => !s.is_correct).length;
+        const percentage = (incorrectCount / allSubmissions.length) * 100;
+        setIncorrectPercentage(percentage);
+      }
+    } catch (error) {
+      console.error('Error loading incorrect percentage:', error);
+    }
+  };
+
   const loadRankingAndPastResults = async (
     puzzleId: string,
     submissionId: string,
@@ -362,6 +403,11 @@ function Today() {
         // Load ranking and past results
         await loadRankingAndPastResults(puzzle.id, data.id, timeMs);
         // Load all-time stats
+        await loadAllTimeStats();
+      } else {
+        // Load incorrect percentage
+        await loadIncorrectPercentage(puzzle.id);
+        // Load all-time stats even if incorrect
         await loadAllTimeStats();
       }
     } catch (error) {
@@ -501,6 +547,11 @@ function Today() {
                 ? `Your time: ${(submission.time_ms / 1000).toFixed(2)}s`
                 : `The correct answer was: ${puzzle?.answer}`}
             </div>
+            {!submission.is_correct && incorrectPercentage !== null && (
+              <div className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3">
+                {incorrectPercentage.toFixed(1)}% of players also got it wrong
+              </div>
+            )}
             {submission.is_correct && (
               <>
                 {loadingStats ? (
@@ -641,6 +692,16 @@ function Today() {
               </>
             )}
           </div>
+          {submitted && submission && !submission.is_correct && (
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center">
+              <button
+                onClick={handleShare}
+                className="inline-flex items-center gap-1 sm:gap-2 bg-red-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-red-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📤</span> <span>Share Result</span>
+              </button>
+            </div>
+          )}
           {alreadyPlayed && previousSubmission && previousSubmission.is_correct && (
             <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
               <button

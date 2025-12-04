@@ -5,6 +5,7 @@ import { Puzzle } from '../types';
 
 interface PuzzleWithStats extends Puzzle {
   successRate: number | null;
+  averageTime: number | null;
 }
 
 interface PlayedPuzzleInfo {
@@ -47,24 +48,33 @@ function Archive() {
         return puzzleDateStr < todayStr;
       });
 
-      // Get success rates for each puzzle
+      // Get success rates and average times for each puzzle
       const puzzlesWithStats = await Promise.all(
         filteredPuzzles.map(async (puzzle: Puzzle) => {
           // Get all submissions for this puzzle
           const { data: submissions, error: subError } = await supabase
             .from('submissions')
-            .select('is_correct')
+            .select('is_correct, time_ms')
             .eq('puzzle_id', puzzle.id);
 
           let successRate: number | null = null;
+          let averageTime: number | null = null;
           if (!subError && submissions && submissions.length > 0) {
             const correctCount = submissions.filter((s: { is_correct: boolean }) => s.is_correct).length;
             successRate = (correctCount / submissions.length) * 100;
+            
+            // Calculate average time for correct submissions
+            const correctSubmissions = submissions.filter((s: { is_correct: boolean }) => s.is_correct);
+            if (correctSubmissions.length > 0) {
+              const totalTime = correctSubmissions.reduce((sum: number, s: { time_ms: number }) => sum + s.time_ms, 0);
+              averageTime = totalTime / correctSubmissions.length;
+            }
           }
 
           return {
             ...puzzle,
             successRate,
+            averageTime,
           };
         })
       );
@@ -146,33 +156,41 @@ function Archive() {
 
             const isPlayed = playedPuzzleIds.has(puzzle.id);
             const playedInfo = playedPuzzleData.get(puzzle.id);
+            const isWon = playedInfo?.is_correct || false;
 
             return (
               <Link
                 key={puzzle.id}
                 to={`/archive/${puzzle.id}`}
-                className={`bg-white rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 ${
+                className={`rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 ${
                   isPlayed
-                    ? 'border-gray-300 opacity-60'
-                    : 'border-blue-300 hover:shadow-lg'
+                    ? isWon
+                      ? 'bg-green-50 border-green-300 opacity-90'
+                      : 'bg-red-50 border-red-300 opacity-90'
+                    : 'bg-white border-blue-300 hover:shadow-lg'
                 }`}
               >
                 <div className="text-center">
-                  <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? 'text-gray-500' : 'text-gray-900'}`}>
+                  <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? (isWon ? 'text-green-700' : 'text-red-700') : 'text-gray-900'}`}>
                     {dateStr}
                   </div>
                   {puzzle.successRate !== null ? (
-                    <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-400' : 'text-blue-600'}`}>
+                    <div className={`text-xs sm:text-sm font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-blue-600'}`}>
                       {puzzle.successRate.toFixed(1)}% correct
                     </div>
                   ) : (
-                    <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <div className={`text-xs sm:text-sm font-medium ${isPlayed ? (isWon ? 'text-green-500' : 'text-red-500') : 'text-gray-500'}`}>
                       No plays
                     </div>
                   )}
+                  {puzzle.averageTime !== null && (
+                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-gray-500'} mt-0.5`}>
+                      Avg: {(puzzle.averageTime / 1000).toFixed(2)}s
+                    </div>
+                  )}
                   {isPlayed && playedInfo && (
-                    <div className="text-[10px] sm:text-xs font-medium text-gray-500 mt-1">
-                      ✓ Played • {(playedInfo.time_ms / 1000).toFixed(2)}s
+                    <div className={`text-[10px] sm:text-xs font-medium ${isWon ? 'text-green-700' : 'text-red-700'} mt-1`}>
+                      {isWon ? '✓' : '✗'} Played • {(playedInfo.time_ms / 1000).toFixed(2)}s
                     </div>
                   )}
                 </div>
