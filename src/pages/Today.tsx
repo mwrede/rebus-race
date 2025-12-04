@@ -137,7 +137,7 @@ function Today() {
       if (puzzlesError) throw puzzlesError;
 
       const archivePuzzleIds = new Set(
-        puzzles?.filter((p) => p.date.split('T')[0] < today).map((p) => p.id) || []
+        puzzles?.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id) || []
       );
 
       // Get all correct submissions, excluding archive puzzles
@@ -151,7 +151,7 @@ function Today() {
 
       // Filter out submissions from archive puzzles
       const dailySubmissions = submissions?.filter(
-        (s) => !archivePuzzleIds.has(s.puzzle_id)
+        (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
       ) || [];
 
       // Group by anon_id and calculate stats
@@ -276,7 +276,7 @@ function Today() {
       if (puzzlesError) throw puzzlesError;
 
       const archivePuzzleIds = new Set(
-        puzzles?.filter((p) => p.date.split('T')[0] < today).map((p) => p.id) || []
+        puzzles?.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id) || []
       );
 
       // Get user's past correct submissions (excluding current puzzle and archive puzzles)
@@ -293,7 +293,7 @@ function Today() {
 
       // Filter out archive puzzles and limit to 10
       const dailyPastSubmissions = (pastData || []).filter(
-        (s) => !archivePuzzleIds.has(s.puzzle_id)
+        (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
       ).slice(0, 10);
 
       setPastSubmissions(dailyPastSubmissions);

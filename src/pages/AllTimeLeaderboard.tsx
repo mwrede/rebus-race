@@ -20,7 +20,21 @@ function AllTimeLeaderboard() {
 
   const loadAllTimeLeaderboard = async () => {
     try {
-      // Get all correct submissions
+      // Get today's date to filter out archive puzzles
+      const today = new Date().toISOString().split('T')[0];
+
+      // Get all puzzles to check which are archive (date < today)
+      const { data: puzzles, error: puzzlesError } = await supabase
+        .from('puzzles')
+        .select('id, date');
+
+      if (puzzlesError) throw puzzlesError;
+
+      const archivePuzzleIds = new Set(
+        puzzles?.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id) || []
+      );
+
+      // Get all correct submissions, excluding archive puzzles
       const { data: submissions, error } = await supabase
         .from('submissions')
         .select('*')
@@ -28,6 +42,11 @@ function AllTimeLeaderboard() {
         .order('time_ms', { ascending: true });
 
       if (error) throw error;
+
+      // Filter out submissions from archive puzzles
+      const dailySubmissions = submissions?.filter(
+        (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
+      ) || [];
 
       // Group by anon_id and calculate stats
       const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Today from './pages/Today';
 import Leaderboard from './pages/Leaderboard';
+import AllTimeLeaderboard from './pages/AllTimeLeaderboard';
 import Archive from './pages/Archive';
 import ArchiveDetail from './pages/ArchiveDetail';
 import { getWins } from './lib/stats';
