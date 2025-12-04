@@ -380,6 +380,7 @@ function Today() {
             is_correct: true,
             time_ms: timeMs,
             username: username || null,
+            guess_count: wrongGuesses.length + 1,
           })
           .select()
           .single();
@@ -424,6 +425,7 @@ function Today() {
               is_correct: false,
               time_ms: timeMs,
               username: username || null,
+              guess_count: guessCount + 1,
             })
             .select()
             .single();

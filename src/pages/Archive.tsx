@@ -6,11 +6,14 @@ import { Puzzle } from '../types';
 interface PuzzleWithStats extends Puzzle {
   successRate: number | null;
   averageTime: number | null;
+  averageGuesses: number | null;
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 interface PlayedPuzzleInfo {
   time_ms: number;
   is_correct: boolean;
+  guess_count: number | null;
 }
 
 function Archive() {
@@ -48,17 +51,18 @@ function Archive() {
         return puzzleDateStr < todayStr;
       });
 
-      // Get success rates and average times for each puzzle
+      // Get success rates, average times, and average guesses for each puzzle
       const puzzlesWithStats = await Promise.all(
         filteredPuzzles.map(async (puzzle: Puzzle) => {
           // Get all submissions for this puzzle
           const { data: submissions, error: subError } = await supabase
             .from('submissions')
-            .select('is_correct, time_ms')
+            .select('is_correct, time_ms, guess_count')
             .eq('puzzle_id', puzzle.id);
 
           let successRate: number | null = null;
           let averageTime: number | null = null;
+          let averageGuesses: number | null = null;
           if (!subError && submissions && submissions.length > 0) {
             const correctCount = submissions.filter((s: { is_correct: boolean }) => s.is_correct).length;
             successRate = (correctCount / submissions.length) * 100;
@@ -69,17 +73,51 @@ function Archive() {
               const totalTime = correctSubmissions.reduce((sum: number, s: { time_ms: number }) => sum + s.time_ms, 0);
               averageTime = totalTime / correctSubmissions.length;
             }
+
+            // Calculate average guesses (use guess_count if available, otherwise estimate)
+            const submissionsWithGuesses = submissions.filter((s: { guess_count: number | null }) => s.guess_count !== null);
+            if (submissionsWithGuesses.length > 0) {
+              const totalGuesses = submissionsWithGuesses.reduce((sum: number, s: { guess_count: number | null }) => sum + (s.guess_count || 0), 0);
+              averageGuesses = totalGuesses / submissionsWithGuesses.length;
+            }
           }
 
           return {
             ...puzzle,
             successRate,
             averageTime,
+            averageGuesses,
           };
         })
       );
+
+      // Sort by success rate to determine difficulty tiers
+      const puzzlesWithSuccessRate = puzzlesWithStats.filter(p => p.successRate !== null);
+      puzzlesWithSuccessRate.sort((a, b) => (b.successRate || 0) - (a.successRate || 0));
       
-      setPuzzles(puzzlesWithStats);
+      // Calculate difficulty tiers (top 1/3 = easy, middle 1/3 = medium, bottom 1/3 = hard)
+      const totalWithRate = puzzlesWithSuccessRate.length;
+      const thirdSize = Math.ceil(totalWithRate / 3);
+      
+      // Create a map of puzzle ID to difficulty
+      const difficultyMap = new Map<string, 'easy' | 'medium' | 'hard'>();
+      puzzlesWithSuccessRate.forEach((puzzle, index) => {
+        if (index < thirdSize) {
+          difficultyMap.set(puzzle.id, 'easy');
+        } else if (index < thirdSize * 2) {
+          difficultyMap.set(puzzle.id, 'medium');
+        } else {
+          difficultyMap.set(puzzle.id, 'hard');
+        }
+      });
+
+      // Add difficulty to each puzzle
+      const puzzlesWithDifficulty = puzzlesWithStats.map(puzzle => ({
+        ...puzzle,
+        difficulty: difficultyMap.get(puzzle.id) || 'medium' as 'easy' | 'medium' | 'hard',
+      }));
+      
+      setPuzzles(puzzlesWithDifficulty);
     } catch (error) {
       console.error('Error loading archive:', error);
     } finally {
@@ -94,7 +132,7 @@ function Archive() {
 
       const { data, error } = await supabase
         .from('submissions')
-        .select('puzzle_id, time_ms, is_correct')
+        .select('puzzle_id, time_ms, is_correct, guess_count')
         .eq('anon_id', anonId)
         .order('created_at', { ascending: false });
 
@@ -104,12 +142,13 @@ function Archive() {
       const playedIds = new Set<string>();
       const playedData = new Map<string, PlayedPuzzleInfo>();
       
-      data?.forEach((s: { puzzle_id: string; time_ms: number; is_correct: boolean }) => {
+      data?.forEach((s: { puzzle_id: string; time_ms: number; is_correct: boolean; guess_count: number | null }) => {
         if (!playedIds.has(s.puzzle_id)) {
           playedIds.add(s.puzzle_id);
           playedData.set(s.puzzle_id, {
             time_ms: s.time_ms,
             is_correct: s.is_correct,
+            guess_count: s.guess_count,
           });
         }
       });
@@ -158,39 +197,62 @@ function Archive() {
             const playedInfo = playedPuzzleData.get(puzzle.id);
             const isWon = playedInfo?.is_correct || false;
 
+            // Determine background color based on difficulty (if not played) or win/loss (if played)
+            let bgColor = 'bg-white';
+            let borderColor = 'border-blue-300';
+            if (isPlayed) {
+              bgColor = isWon ? 'bg-green-50' : 'bg-red-50';
+              borderColor = isWon ? 'border-green-300' : 'border-red-300';
+            } else {
+              // Color by difficulty
+              if (puzzle.difficulty === 'easy') {
+                bgColor = 'bg-green-50';
+                borderColor = 'border-green-300';
+              } else if (puzzle.difficulty === 'medium') {
+                bgColor = 'bg-yellow-50';
+                borderColor = 'border-yellow-300';
+              } else {
+                bgColor = 'bg-red-50';
+                borderColor = 'border-red-300';
+              }
+            }
+
             return (
               <Link
                 key={puzzle.id}
                 to={`/archive/${puzzle.id}`}
                 className={`rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 ${
-                  isPlayed
-                    ? isWon
-                      ? 'bg-green-50 border-green-300 opacity-90'
-                      : 'bg-red-50 border-red-300 opacity-90'
-                    : 'bg-white border-blue-300 hover:shadow-lg'
+                  isPlayed ? `${bgColor} ${borderColor} opacity-90` : `${bgColor} ${borderColor} hover:shadow-lg`
                 }`}
               >
                 <div className="text-center">
                   <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? (isWon ? 'text-green-700' : 'text-red-700') : 'text-gray-900'}`}>
                     {dateStr}
                   </div>
-                  {puzzle.successRate !== null ? (
-                    <div className={`text-xs sm:text-sm font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-blue-600'}`}>
-                      {puzzle.successRate.toFixed(1)}% correct
-                    </div>
-                  ) : (
-                    <div className={`text-xs sm:text-sm font-medium ${isPlayed ? (isWon ? 'text-green-500' : 'text-red-500') : 'text-gray-500'}`}>
-                      No plays
-                    </div>
-                  )}
-                  {puzzle.averageTime !== null && (
-                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-gray-500'} mt-0.5`}>
-                      Avg: {(puzzle.averageTime / 1000).toFixed(2)}s
-                    </div>
-                  )}
+                  <div className="space-y-0.5 mb-1">
+                    {puzzle.averageGuesses !== null && (
+                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-gray-600'}`}>
+                        Avg {puzzle.averageGuesses.toFixed(1)} guesses
+                      </div>
+                    )}
+                    {puzzle.averageTime !== null && (
+                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-gray-600'}`}>
+                        Avg {(puzzle.averageTime / 1000).toFixed(2)}s
+                      </div>
+                    )}
+                    {puzzle.successRate !== null ? (
+                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-600' : 'text-red-600') : 'text-blue-600'}`}>
+                        {puzzle.successRate.toFixed(1)}% correct
+                      </div>
+                    ) : (
+                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? (isWon ? 'text-green-500' : 'text-red-500') : 'text-gray-500'}`}>
+                        No plays
+                      </div>
+                    )}
+                  </div>
                   {isPlayed && playedInfo && (
-                    <div className={`text-[10px] sm:text-xs font-medium ${isWon ? 'text-green-700' : 'text-red-700'} mt-1`}>
-                      {isWon ? '✓' : '✗'} Played • {(playedInfo.time_ms / 1000).toFixed(2)}s
+                    <div className={`text-[10px] sm:text-xs font-medium ${isWon ? 'text-green-700' : 'text-red-700'} mt-1 pt-1 border-t border-gray-200`}>
+                      <div>You: {playedInfo.guess_count !== null ? `${playedInfo.guess_count} guesses` : '—'} • {(playedInfo.time_ms / 1000).toFixed(2)}s</div>
                     </div>
                   )}
                 </div>
