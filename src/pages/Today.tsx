@@ -368,6 +368,10 @@ function Today() {
       setIsSubmitting(true);
       const endTime = Date.now();
       const timeMs = startTime ? endTime - startTime : 0;
+      
+      // Calculate guess count: wrong guesses + 1 (the correct guess)
+      // If first guess is correct, wrongGuesses.length = 0, so guess_count = 1
+      const finalGuessCount = wrongGuesses.length + 1;
 
       try {
         const username = getUsername();
@@ -380,7 +384,7 @@ function Today() {
             is_correct: true,
             time_ms: timeMs,
             username: username || null,
-            guess_count: wrongGuesses.length + 1,
+            guess_count: finalGuessCount,
           })
           .select()
           .single();

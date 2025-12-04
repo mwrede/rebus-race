@@ -173,6 +173,29 @@ function Archive() {
         Puzzle Archive
       </h1>
 
+      {/* Difficulty Legend */}
+      <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-3 sm:mb-4 md:mb-6">
+        <div className="text-xs sm:text-sm font-semibold text-gray-900 mb-2 text-center">
+          Difficulty Scale (based on % correct)
+        </div>
+        <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: getDifficultyColor(0) }}></div>
+            <span className="text-[10px] sm:text-xs text-gray-700 font-semibold">Hardest</span>
+          </div>
+          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ 
+            background: 'linear-gradient(to right, rgb(220, 38, 38), rgb(249, 140, 20), rgb(34, 197, 94))' 
+          }}></div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded border border-gray-300" style={{ backgroundColor: getDifficultyColor(100) }}></div>
+            <span className="text-[10px] sm:text-xs text-gray-700 font-semibold">Easiest</span>
+          </div>
+        </div>
+        <div className="text-[10px] sm:text-xs text-gray-600 text-center">
+          <span className="font-semibold text-red-600">Red = Hardest</span> (low % correct) • <span className="font-semibold text-green-600">Green = Easiest</span> (high % correct)
+        </div>
+      </div>
+
       {puzzles.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <p className="text-gray-600">No puzzles in the archive yet.</p>
@@ -206,7 +229,7 @@ function Archive() {
               <Link
                 key={puzzle.id}
                 to={`/archive/${puzzle.id}`}
-                className={`rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 ${
+                className={`rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 relative ${
                   isPlayed ? `${borderColor} opacity-90` : `${borderColor} hover:shadow-lg`
                 }`}
                 style={{
@@ -215,6 +238,13 @@ function Archive() {
                     : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`,
                 }}
               >
+                {isPlayed && (
+                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
+                    <span className="text-[9px] sm:text-[10px] font-semibold text-gray-600 bg-gray-200 px-1.5 sm:px-2 py-0.5 rounded">
+                      Already played
+                    </span>
+                  </div>
+                )}
                 <div className="text-center">
                   <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? (isWon ? 'text-green-700' : 'text-red-700') : 'text-gray-900'}`}>
                     {dateStr}

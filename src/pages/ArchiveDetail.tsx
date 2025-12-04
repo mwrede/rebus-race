@@ -153,6 +153,10 @@ function ArchiveDetail() {
       setIsSubmitting(true);
       const endTime = Date.now();
       const timeMs = startTime ? endTime - startTime : 0;
+      
+      // Calculate guess count: wrong guesses + 1 (the correct guess)
+      // If first guess is correct, wrongGuesses.length = 0, so guess_count = 1
+      const finalGuessCount = wrongGuesses.length + 1;
 
       try {
         const username = getUsername();
@@ -165,7 +169,7 @@ function ArchiveDetail() {
             is_correct: true,
             time_ms: timeMs,
             username: username || null,
-            guess_count: wrongGuesses.length + 1,
+            guess_count: finalGuessCount,
           })
           .select()
           .single();
@@ -664,7 +668,7 @@ function ArchiveDetail() {
       )}
 
       {submitted && submission && !alreadyPlayed && (
-        <div className="bg-white rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6">
+        <div className={`rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 bg-white`}>
           <div className="text-center mb-2 sm:mb-3">
             <div
               className={`text-2xl sm:text-3xl md:text-4xl mb-1.5 sm:mb-2 md:mb-3 ${
