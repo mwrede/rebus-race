@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { setUsername } from '../lib/username';
+import { supabase } from '../lib/supabase';
 
 interface UsernamePromptProps {
   onComplete: (username: string) => void;
@@ -8,8 +9,29 @@ interface UsernamePromptProps {
 function UsernamePrompt({ onComplete }: UsernamePromptProps) {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
+  const [isChecking, setIsChecking] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const checkUsernameAvailability = async (username: string): Promise<boolean> => {
+    try {
+      // Check if username already exists in submissions
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('username')
+        .eq('username', username)
+        .limit(1);
+
+      if (error) throw error;
+
+      // Username is available if no results found
+      return !data || data.length === 0;
+    } catch (error) {
+      console.error('Error checking username availability:', error);
+      // On error, allow the username (better UX than blocking)
+      return true;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = input.trim();
 
@@ -25,6 +47,21 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
 
     if (trimmed.length > 20) {
       setError('Username must be 20 characters or less');
+      return;
+    }
+
+    // Check for invalid characters (alphanumeric and spaces only)
+    if (!/^[a-zA-Z0-9\s]+$/.test(trimmed)) {
+      setError('Username can only contain letters, numbers, and spaces');
+      return;
+    }
+
+    setIsChecking(true);
+    const isAvailable = await checkUsernameAvailability(trimmed);
+    setIsChecking(false);
+
+    if (!isAvailable) {
+      setError('This username is already taken. Please choose another one.');
       return;
     }
 
@@ -68,9 +105,10 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 font-medium"
+            disabled={isChecking}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 font-medium disabled:bg-blue-400 disabled:cursor-not-allowed"
           >
-            Continue
+            {isChecking ? 'Checking...' : 'Continue'}
           </button>
         </form>
       </div>

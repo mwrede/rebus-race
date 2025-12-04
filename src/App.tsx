@@ -11,6 +11,7 @@ import { Submission } from './types';
 
 function App() {
   const [allTimeRank, setAllTimeRank] = useState<number | null>(null);
+  const [streak, setStreak] = useState<number>(0);
   const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -25,12 +26,14 @@ function App() {
       setUsername(getUsername());
     }
 
-    // Load all-time ranking
+    // Load all-time ranking and streak
     loadAllTimeRanking();
+    loadStreak();
 
     // Listen for custom win update event (to refresh ranking)
     const handleWinUpdate = () => {
       loadAllTimeRanking();
+      loadStreak();
     };
     window.addEventListener('rebusWinUpdated', handleWinUpdate);
 
@@ -139,6 +142,79 @@ function App() {
     }
   };
 
+  const loadStreak = async () => {
+    try {
+      const anonId = localStorage.getItem('rebus_anon_id');
+      if (!anonId) {
+        setStreak(0);
+        return;
+      }
+
+      // Get today's date to filter out archive puzzles
+      const today = new Date().toISOString().split('T')[0];
+
+      // Get all puzzles to check which are archive (date < today)
+      const { data: puzzles, error: puzzlesError } = await supabase
+        .from('puzzles')
+        .select('id, date')
+        .order('date', { ascending: false });
+
+      if (puzzlesError) throw puzzlesError;
+
+      const archivePuzzleIds = new Set(
+        puzzles?.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id) || []
+      );
+
+      // Get all daily puzzles ordered by date (newest first)
+      const dailyPuzzles = puzzles?.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id)) || [];
+      dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
+
+      // Get all user's submissions for daily puzzles
+      const { data: submissions, error: submissionsError } = await supabase
+        .from('submissions')
+        .select('puzzle_id, is_correct, created_at')
+        .eq('anon_id', anonId)
+        .order('created_at', { ascending: false });
+
+      if (submissionsError) throw submissionsError;
+
+      // Filter to only daily puzzles
+      const dailySubmissions = (submissions || []).filter(
+        (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
+      );
+
+      // Create a map of puzzle_id to submission result
+      const submissionMap = new Map<string, boolean>();
+      dailySubmissions.forEach((s: Submission) => {
+        // Only keep the most recent submission for each puzzle
+        if (!submissionMap.has(s.puzzle_id)) {
+          submissionMap.set(s.puzzle_id, s.is_correct);
+        }
+      });
+
+      // Calculate streak: count consecutive wins from most recent puzzle backwards
+      let currentStreak = 0;
+      for (const puzzle of dailyPuzzles) {
+        const result = submissionMap.get(puzzle.id);
+        if (result === true) {
+          // Win - continue streak
+          currentStreak++;
+        } else if (result === false) {
+          // Loss - break streak
+          break;
+        } else {
+          // No submission for this puzzle - break streak (can't have a streak if you didn't play)
+          break;
+        }
+      }
+
+      setStreak(currentStreak);
+    } catch (error) {
+      console.error('Error loading streak:', error);
+      setStreak(0);
+    }
+  };
+
   if (!isConfigured) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -186,6 +262,11 @@ function App() {
                 {username && (
                   <div className="text-[10px] sm:text-xs md:text-sm font-semibold text-blue-600 px-0.5 sm:px-1 md:px-2 hidden md:block truncate max-w-[60px] sm:max-w-none">
                     {username}
+                  </div>
+                )}
+                {streak > 0 && (
+                  <div className="text-[10px] sm:text-xs md:text-sm font-semibold text-orange-600 px-0.5 sm:px-1 md:px-2">
+                    🔥 {streak}
                   </div>
                 )}
                 <div className="text-[10px] sm:text-xs md:text-sm font-semibold text-blue-600 px-0.5 sm:px-1 md:px-2">

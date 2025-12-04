@@ -356,7 +356,12 @@ function ArchiveDetail() {
     );
   }
 
-  const puzzleDate = new Date(puzzle.date);
+  // Parse date string directly to avoid timezone issues (same as Archive.tsx)
+  const dateParts = puzzle.date.split('T')[0].split('-');
+  const year = parseInt(dateParts[0]);
+  const month = parseInt(dateParts[1]) - 1; // 0-indexed
+  const day = parseInt(dateParts[2]);
+  const puzzleDate = new Date(year, month, day);
 
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
@@ -670,7 +675,7 @@ function ArchiveDetail() {
         </div>
       )}
 
-      {submitted && submission && (
+      {submitted && submission && !alreadyPlayed && (
         <div className={`rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 bg-white`}>
           <div className="text-center mb-2 sm:mb-3">
             <div
