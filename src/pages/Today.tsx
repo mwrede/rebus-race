@@ -22,6 +22,8 @@ function Today() {
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [previousSubmission, setPreviousSubmission] = useState<Submission | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [allTimeRank, setAllTimeRank] = useState<number | null>(null);
+  const [averageTime, setAverageTime] = useState<number | null>(null);
 
   useEffect(() => {
     // Get or create anonymous ID
@@ -97,6 +99,11 @@ function Today() {
                 existingSubmission.id,
                 existingSubmission.time_ms
               );
+              // Load all-time stats
+              await loadAllTimeStats();
+            } else {
+              // Still load all-time stats even if incorrect
+              await loadAllTimeStats();
             }
           } else {
             // Don't start timer yet - wait for user to click "ready"
@@ -114,6 +121,71 @@ function Today() {
       console.error('Error loading puzzle:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAllTimeStats = async () => {
+    try {
+      // Get all correct submissions
+      const { data: submissions, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('is_correct', true)
+        .order('time_ms', { ascending: true });
+
+      if (error) throw error;
+
+      // Group by anon_id and calculate stats
+      const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();
+
+      submissions?.forEach((submission: Submission) => {
+        if (!submission.anon_id) return;
+
+        if (!userStats.has(submission.anon_id)) {
+          userStats.set(submission.anon_id, {
+            username: submission.username || null,
+            times: [],
+            puzzles: new Set(),
+          });
+        }
+
+        const stats = userStats.get(submission.anon_id)!;
+        stats.times.push(submission.time_ms);
+        stats.puzzles.add(submission.puzzle_id);
+        if (submission.username) {
+          stats.username = submission.username;
+        }
+      });
+
+      // Convert to leaderboard entries and find user's rank
+      const entries = Array.from(userStats.entries())
+        .map(([anon_id, stats]) => {
+          const totalTime = stats.times.reduce((sum, time) => sum + time, 0);
+          const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
+
+          return {
+            anon_id,
+            username: stats.username,
+            averageTime,
+            puzzlesWon: stats.puzzles.size,
+          };
+        })
+        .filter((entry) => entry.puzzlesWon >= 1)
+        .sort((a, b) => {
+          if (a.averageTime === 0 && b.averageTime === 0) return 0;
+          if (a.averageTime === 0) return 1;
+          if (b.averageTime === 0) return -1;
+          return a.averageTime - b.averageTime;
+        });
+
+      // Find user's rank and average
+      const userEntry = entries.findIndex((entry) => entry.anon_id === anonId);
+      if (userEntry !== -1) {
+        setAllTimeRank(userEntry + 1);
+        setAverageTime(entries[userEntry].averageTime);
+      }
+    } catch (error) {
+      console.error('Error loading all-time stats:', error);
     }
   };
 
@@ -227,6 +299,8 @@ function Today() {
         incrementWin(puzzle.id);
         // Load ranking and past results
         await loadRankingAndPastResults(puzzle.id, data.id, timeMs);
+        // Load all-time stats
+        await loadAllTimeStats();
       }
     } catch (error) {
       console.error('Error submitting answer:', error);
@@ -350,23 +424,23 @@ function Today() {
       )}
 
       {submitted && submission && (
-        <div className={`rounded-lg shadow-md p-3 sm:p-4 md:p-6 ${alreadyPlayed ? 'bg-gray-100 opacity-75' : 'bg-white'}`}>
+        <div className={`rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 ${alreadyPlayed ? 'bg-gray-100 opacity-75' : 'bg-white'}`}>
           {alreadyPlayed && (
-            <div className="text-center mb-2 sm:mb-4">
-              <div className="text-xs sm:text-sm font-medium text-gray-600 mb-1 sm:mb-2">
+            <div className="text-center mb-1.5 sm:mb-2 md:mb-3">
+              <div className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 mb-1">
                 Your Result from Today
               </div>
             </div>
           )}
-          <div className="text-center mb-3 sm:mb-4 md:mb-6">
+          <div className="text-center mb-2 sm:mb-3">
             <div
-              className={`text-3xl sm:text-4xl md:text-5xl mb-2 sm:mb-3 md:mb-4 ${
+              className={`text-2xl sm:text-3xl md:text-4xl mb-1.5 sm:mb-2 md:mb-3 ${
                 submission.is_correct ? 'text-green-600' : 'text-red-600'
               }`}
             >
               {submission.is_correct ? '✓ Correct!' : '✗ Incorrect'}
             </div>
-            <div className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mb-1 sm:mb-2">
+            <div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
               {submission.is_correct
                 ? `Your time: ${(submission.time_ms / 1000).toFixed(2)}s`
                 : `The correct answer was: ${puzzle?.answer}`}
@@ -374,15 +448,15 @@ function Today() {
             {submission.is_correct && (
               <>
                 {loadingStats ? (
-                  <div className="text-sm text-gray-600 mt-4">
+                  <div className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-4">
                     Loading your ranking...
                   </div>
                 ) : (
                   <>
                     {rank !== null && (
-                      <div className="mt-2 sm:mt-3 md:mt-4 mb-3 sm:mb-4 md:mb-6">
-                        <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 mb-0.5 sm:mb-1">
-                          Rank #{rank}
+                      <div className="mt-2 sm:mt-3 md:mt-4 mb-2 sm:mb-3 md:mb-4">
+                        <div className="text-base sm:text-lg md:text-xl font-bold text-blue-600 mb-0.5 sm:mb-1">
+                          Today's Rank: #{rank}
                         </div>
                         <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">
                           out of {totalCorrect} correct {totalCorrect === 1 ? 'submission' : 'submissions'}
@@ -390,9 +464,31 @@ function Today() {
                       </div>
                     )}
 
+                    {(allTimeRank !== null || averageTime !== null) && (
+                      <div className="mt-1.5 sm:mt-2 mb-2 sm:mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="text-center">
+                          <div className="text-[10px] sm:text-xs font-bold text-blue-700 mb-0.5 sm:mb-1">
+                            All-Time Stats
+                          </div>
+                          <div className="flex justify-center items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
+                            {allTimeRank !== null && (
+                              <span className="font-semibold text-gray-900">
+                                Rank: #{allTimeRank}
+                              </span>
+                            )}
+                            {averageTime !== null && (
+                              <span className="font-semibold text-gray-900">
+                                Avg: {(averageTime / 1000).toFixed(2)}s
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {pastSubmissions.length > 0 && (
-                      <div className="mt-3 sm:mt-4 md:mt-6 pt-3 sm:pt-4 md:pt-6 border-t border-gray-200">
-                        <div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">
+                      <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-200">
+                        <div className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 mb-1.5 sm:mb-2">
                           Compared to Your Past Results
                         </div>
                         {(() => {
@@ -480,7 +576,7 @@ function Today() {
                       </div>
                     )}
                     {pastSubmissions.length === 0 && (
-                      <div className="mt-2 sm:mt-4 text-xs sm:text-sm text-gray-600">
+                      <div className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-gray-600">
                         This is your first correct submission! 🎉
                       </div>
                     )}
@@ -490,7 +586,7 @@ function Today() {
             )}
           </div>
           {alreadyPlayed && previousSubmission && previousSubmission.is_correct && (
-            <div className="mt-3 sm:mt-4 md:mt-6 pt-3 sm:pt-4 md:pt-6 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
               <button
                 onClick={() => {
                   if (previousSubmission) {
@@ -540,7 +636,7 @@ function Today() {
           )}
           
           {submission.is_correct && !alreadyPlayed && (
-            <div className="mt-3 sm:mt-4 md:mt-6 pt-3 sm:pt-4 md:pt-6 border-t border-gray-200 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-200 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
               <button
                 onClick={handleShare}
                 className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"
