@@ -21,6 +21,7 @@ function Today() {
   const [loadingStats, setLoadingStats] = useState(false);
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
   const [previousSubmission, setPreviousSubmission] = useState<Submission | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     // Get or create anonymous ID
@@ -36,7 +37,7 @@ function Today() {
   }, []);
 
   useEffect(() => {
-    if (startTime !== null && timeLeft > 0 && !submitted) {
+    if (isReady && startTime !== null && timeLeft > 0 && !submitted) {
       const timer = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
@@ -48,7 +49,12 @@ function Today() {
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [startTime, timeLeft, submitted]);
+  }, [isReady, startTime, timeLeft, submitted]);
+
+  const handleReady = () => {
+    setIsReady(true);
+    setStartTime(Date.now());
+  };
 
   const loadTodayPuzzle = async () => {
     try {
@@ -93,10 +99,12 @@ function Today() {
               );
             }
           } else {
-            setStartTime(Date.now());
+            // Don't start timer yet - wait for user to click "ready"
+            setIsReady(false);
           }
         } else {
-          setStartTime(Date.now());
+          // Don't start timer yet - wait for user to click "ready"
+          setIsReady(false);
         }
       } else {
         // No puzzle for today
@@ -270,22 +278,46 @@ function Today() {
 
       {!submitted && !alreadyPlayed && (
         <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-3 sm:mb-4 md:mb-6">
-          <div className="text-center mb-3 sm:mb-4">
-            <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-600 mb-1 sm:mb-2">
-              {timeLeft}s
+          {!isReady ? (
+            <div className="text-center py-6 sm:py-8">
+              <div className="mb-6 sm:mb-8">
+                <img
+                  src={puzzle.image_url}
+                  alt="Rebus puzzle"
+                  className="w-full rounded-lg border-2 border-gray-200 opacity-50 blur-sm"
+                />
+              </div>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">
+                Are you ready?
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
+                Once you start, you'll have 30 seconds to solve the puzzle!
+              </p>
+              <button
+                onClick={handleReady}
+                className="bg-blue-600 text-white py-3 sm:py-4 px-8 sm:px-12 rounded-lg hover:bg-blue-700 font-bold text-lg sm:text-xl md:text-2xl shadow-lg transform hover:scale-105 transition-all"
+              >
+                Start Timer! ⏱️
+              </button>
             </div>
-            <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">Time remaining</div>
-          </div>
+          ) : (
+            <>
+              <div className="text-center mb-3 sm:mb-4">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-600 mb-1 sm:mb-2">
+                  {timeLeft}s
+                </div>
+                <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">Time remaining</div>
+              </div>
 
-          <div className="mb-4 sm:mb-6">
-            <img
-              src={puzzle.image_url}
-              alt="Rebus puzzle"
-              className="w-full rounded-lg border-2 border-gray-200"
-            />
-          </div>
+              <div className="mb-4 sm:mb-6">
+                <img
+                  src={puzzle.image_url}
+                  alt="Rebus puzzle"
+                  className="w-full rounded-lg border-2 border-gray-200"
+                />
+              </div>
 
-          <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit}>
             <div className="mb-3 sm:mb-4">
               <label
                 htmlFor="answer"
@@ -312,6 +344,8 @@ function Today() {
               {isSubmitting ? 'Submitting...' : 'Submit Answer'}
             </button>
           </form>
+            </>
+          )}
         </div>
       )}
 
@@ -455,25 +489,70 @@ function Today() {
               </>
             )}
           </div>
-          {alreadyPlayed && (
+          {alreadyPlayed && previousSubmission && previousSubmission.is_correct && (
+            <div className="mt-3 sm:mt-4 md:mt-6 pt-3 sm:pt-4 md:pt-6 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+              <button
+                onClick={() => {
+                  if (previousSubmission) {
+                    const timeSeconds = (previousSubmission.time_ms / 1000).toFixed(2);
+                    const shareText = `🧩 I solved today's Rebus Race puzzle in ${timeSeconds}s! Can you beat my time?\n\nPlay at: ${window.location.origin}`;
+                    
+                    if (navigator.share) {
+                      navigator.share({
+                        title: 'Rebus Race Result',
+                        text: shareText,
+                        url: window.location.origin,
+                      }).catch(() => {
+                        navigator.clipboard.writeText(shareText).then(() => {
+                          alert('Result copied to clipboard!');
+                        });
+                      });
+                    } else {
+                      navigator.clipboard.writeText(shareText).then(() => {
+                        alert('Result copied to clipboard!');
+                      }).catch(() => {
+                        prompt('Copy this text:', shareText);
+                      });
+                    }
+                  }
+                }}
+                className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📤</span> <span>Share Result</span>
+              </button>
+              <Link
+                to="/archive"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📚</span> <span>Browse Archive</span>
+              </Link>
+            </div>
+          )}
+          {alreadyPlayed && previousSubmission && !previousSubmission.is_correct && (
             <div className="mt-3 sm:mt-4 md:mt-6 pt-3 sm:pt-4 md:pt-6 border-t border-gray-300 text-center">
               <Link
                 to="/archive"
-                className="inline-block bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
               >
-                Browse Archive
+                <span>📚</span> <span>Browse Archive</span>
               </Link>
             </div>
           )}
           
           {submission.is_correct && !alreadyPlayed && (
-            <div className="mt-3 sm:mt-4 md:mt-6 pt-3 sm:pt-4 md:pt-6 border-t border-gray-200 text-center">
+            <div className="mt-3 sm:mt-4 md:mt-6 pt-3 sm:pt-4 md:pt-6 border-t border-gray-200 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
               <button
                 onClick={handleShare}
                 className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"
               >
                 <span>📤</span> <span>Share Result</span>
               </button>
+              <Link
+                to="/archive"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📚</span> <span>Go to Archive</span>
+              </Link>
             </div>
           )}
         </div>
