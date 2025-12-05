@@ -637,7 +637,7 @@ function ArchiveDetail() {
                 <div className="mb-2">
                   <button
                     onClick={handleHintClick}
-                    className="w-full bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 font-medium text-xs sm:text-sm shadow-md"
+                    className="w-full bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-purple-600 font-medium text-xs sm:text-sm shadow-md"
                   >
                     💡 Get Hint (Adds 1 minute to your time)
                   </button>
@@ -646,11 +646,11 @@ function ArchiveDetail() {
 
               {/* Hint display - shown after hint is used */}
               {hintUsed && puzzle?.hint && (
-                <div className="mb-2 p-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
-                  <div className="text-[10px] sm:text-xs font-semibold text-yellow-800 mb-1">
+                <div className="mb-2 p-3 bg-purple-50 border-2 border-purple-300 rounded-lg">
+                  <div className="text-[10px] sm:text-xs font-semibold text-purple-800 mb-1">
                     💡 Hint:
                   </div>
-                  <div className="text-xs sm:text-sm text-yellow-900">
+                  <div className="text-xs sm:text-sm text-purple-900">
                     {puzzle.hint}
                   </div>
                 </div>
@@ -717,7 +717,7 @@ function ArchiveDetail() {
               </button>
               <button
                 onClick={handleHintConfirm}
-                className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 font-medium text-sm"
+                className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 font-medium text-sm"
               >
                 Yes, Use Hint
               </button>
