@@ -33,6 +33,7 @@ function Leaderboard() {
 
   const loadLeaderboard = async () => {
     try {
+      setLoading(true);
       const today = new Date().toISOString().split('T')[0];
       
       // Get today's puzzle
@@ -43,7 +44,8 @@ function Leaderboard() {
         .single();
 
       if (puzzleError && puzzleError.code !== 'PGRST116') {
-        throw puzzleError;
+        console.error('Error fetching today\'s puzzle:', puzzleError);
+        // Don't throw - continue to show all-time leaderboard
       }
 
       if (puzzleData) {
@@ -55,7 +57,12 @@ function Leaderboard() {
           .select('*')
           .eq('puzzle_id', puzzleData.id);
 
-        if (allSubmissionsError) throw allSubmissionsError;
+        if (allSubmissionsError) {
+          console.error('Error fetching submissions:', allSubmissionsError);
+          throw allSubmissionsError;
+        }
+
+        console.log('Today\'s puzzle submissions:', allSubmissionsData?.length || 0);
 
         // Get correct submissions
         const correctSubmissions = (allSubmissionsData || []).filter((s: Submission) => s.is_correct);
@@ -85,6 +92,13 @@ function Leaderboard() {
           const percentage = (correctCount / totalSubmissions) * 100;
           setCorrectPercentage(percentage);
         }
+      } else {
+        // No puzzle today - clear today's leaderboard data
+        setPuzzle(null);
+        setSubmissions([]);
+        setIncorrectSubmissions([]);
+        setAverageTime(null);
+        setCorrectPercentage(null);
       }
     } catch (error) {
       console.error('Error loading leaderboard:', error);
@@ -95,6 +109,7 @@ function Leaderboard() {
 
   const loadAllTimeLeaderboard = async () => {
     try {
+      setLoadingAllTime(true);
       // Get today's date to filter out archive puzzles
       const today = new Date().toISOString().split('T')[0];
 
@@ -103,11 +118,18 @@ function Leaderboard() {
         .from('puzzles')
         .select('id, date');
 
-      if (puzzlesError) throw puzzlesError;
+      if (puzzlesError) {
+        console.error('Error fetching puzzles:', puzzlesError);
+        throw puzzlesError;
+      }
+
+      console.log('Total puzzles:', puzzles?.length || 0);
 
       const archivePuzzleIds = new Set(
         puzzles?.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id) || []
       );
+
+      console.log('Archive puzzle IDs:', archivePuzzleIds.size);
 
       // Get all correct submissions, excluding archive puzzles
       const { data: submissions, error } = await supabase
@@ -116,18 +138,28 @@ function Leaderboard() {
         .eq('is_correct', true)
         .order('time_ms', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching submissions:', error);
+        throw error;
+      }
+
+      console.log('Total correct submissions:', submissions?.length || 0);
 
       // Filter out submissions from archive puzzles
       const dailySubmissions = submissions?.filter(
         (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
       ) || [];
 
+      console.log('Daily submissions (non-archive):', dailySubmissions.length);
+
       // Group by anon_id and calculate stats
       const userStats = new Map<string, { username: string | null; times: number[]; guesses: number[]; puzzles: Set<string> }>();
 
       dailySubmissions.forEach((submission: Submission) => {
-        if (!submission.anon_id) return;
+        if (!submission.anon_id) {
+          console.warn('Submission without anon_id:', submission.id);
+          return;
+        }
 
         if (!userStats.has(submission.anon_id)) {
           userStats.set(submission.anon_id, {
@@ -241,9 +273,13 @@ function Leaderboard() {
         if (b.averageTime === 0) return -1;
         return a.averageTime - b.averageTime;
       });
+      
+      console.log('All-time leaderboard entries:', sortedByTime.length);
       setAllTimeLeaderboard(sortedByTime);
     } catch (error) {
       console.error('Error loading all-time leaderboard:', error);
+      // Set empty array on error so UI doesn't show loading forever
+      setAllTimeLeaderboard([]);
     } finally {
       setLoadingAllTime(false);
     }
@@ -300,25 +336,25 @@ function Leaderboard() {
                 <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3 text-center">
                   Today's Leaderboard
                 </h2>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rank
-                      </th>
-                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Username
-                      </th>
-                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Time
-                      </th>
-                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Guesses
-                      </th>
-                    </tr>
-                  </thead>
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Rank
+                          </th>
+                          <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Username
+                          </th>
+                          <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Time
+                          </th>
+                          <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Guesses
+                          </th>
+                        </tr>
+                      </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {submissions.map((submission, index) => {
                       const isCurrentUser = submission.anon_id === currentAnonId;
@@ -385,11 +421,11 @@ function Leaderboard() {
                       </tr>
                       );
                     })}
-                  </tbody>
-                </table>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
             </>
           )}
         </>
