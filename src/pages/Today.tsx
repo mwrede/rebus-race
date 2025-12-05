@@ -679,7 +679,7 @@ function Today() {
               </button>
               <button
                 onClick={() => setShowRules(true)}
-                className="mt-2 sm:mt-3 text-gray-600 hover:text-gray-800 text-xs sm:text-sm underline"
+                className="mt-2 sm:mt-3 text-gray-600 hover:text-gray-800 text-xs sm:text-sm italic py-0.5 px-2 border border-gray-300 rounded hover:border-gray-400 bg-transparent"
               >
                 Rules
               </button>
