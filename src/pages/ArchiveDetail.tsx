@@ -468,7 +468,8 @@ function ArchiveDetail() {
     const resultText = submission.is_correct 
       ? `I solved a Rebus Race puzzle in ${timeSeconds}s!`
       : `I tried a Rebus Race puzzle but didn't get it right.`;
-    const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay at: ${window.location.origin}`;
+    const puzzleLink = `${window.location.origin}/archive/${puzzle.id}`;
+    const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay this puzzle: ${puzzleLink}`;
 
     // Copy to clipboard
     try {
@@ -615,12 +616,13 @@ function ArchiveDetail() {
               <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
                 <button
                   onClick={() => {
-                    if (previousSubmission) {
+                    if (previousSubmission && puzzle) {
                       const timeSeconds = (previousSubmission.time_ms / 1000).toFixed(2);
                       const resultText = previousSubmission.is_correct 
                         ? `I solved a Rebus Race puzzle in ${timeSeconds}s!`
                         : `I tried a Rebus Race puzzle but didn't get it right.`;
-                      const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay at: ${window.location.origin}`;
+                      const puzzleLink = `${window.location.origin}/archive/${puzzle.id}`;
+                      const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay this puzzle: ${puzzleLink}`;
 
                       navigator.clipboard.writeText(shareText).then(() => {
                         alert('Result copied to clipboard!');
