@@ -309,7 +309,7 @@ function Archive() {
                                   {dateStr}
                                 </div>
                                 <div className="space-y-0.5 mb-1">
-                                  <div className="text-[10px] sm:text-xs font-medium text-gray-700">
+                                  <div className="text-xs sm:text-sm font-medium text-gray-700">
                                     {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'play' : 'plays'}
                                   </div>
                                   {puzzle.averageGuesses !== null && (
@@ -322,13 +322,9 @@ function Archive() {
                                       Avg {(puzzle.averageTime / 1000).toFixed(2)}s
                                     </div>
                                   )}
-                                  {puzzle.successRate !== null ? (
-                                    <div className="text-[10px] sm:text-xs font-medium text-blue-600">
+                                  {puzzle.successRate !== null && (
+                                    <div className="text-xs sm:text-sm font-medium text-blue-600">
                                       {puzzle.successRate.toFixed(1)}% correct
-                                    </div>
-                                  ) : (
-                                    <div className="text-[10px] sm:text-xs font-medium text-gray-500">
-                                      No plays
                                     </div>
                                   )}
                                 </div>
@@ -421,7 +417,7 @@ function Archive() {
                                     {dateStr}
                                   </div>
                                   <div className="space-y-0.5 mb-1">
-                                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-700'}`}>
+                                    <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-700'}`}>
                                       {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'play' : 'plays'}
                                     </div>
                                     {puzzle.averageGuesses !== null && (
@@ -434,13 +430,9 @@ function Archive() {
                                         Avg {(puzzle.averageTime / 1000).toFixed(2)}s
                                       </div>
                                     )}
-                                    {puzzle.successRate !== null ? (
-                                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-blue-600'}`}>
+                                    {puzzle.successRate !== null && (
+                                      <div className={`text-xs sm:text-sm font-medium ${isPlayed ? 'text-gray-500' : 'text-blue-600'}`}>
                                         {puzzle.successRate.toFixed(1)}% correct
-                                      </div>
-                                    ) : (
-                                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-500'}`}>
-                                        No plays
                                       </div>
                                     )}
                                   </div>
