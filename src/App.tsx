@@ -11,7 +11,6 @@ import { Submission } from './types';
 import { TimerProvider, useTimer } from './contexts/TimerContext';
 
 function App() {
-  const [allTimeRank, setAllTimeRank] = useState<number | null>(null);
   const [streak, setStreak] = useState<number>(0);
   const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
@@ -27,121 +26,19 @@ function App() {
       setUsername(getUsername());
     }
 
-    // Load all-time ranking and streak
-    loadAllTimeRanking();
+    // Load streak
     loadStreak();
 
-    // Listen for custom win update event (to refresh ranking)
+    // Listen for custom win update event (to refresh streak)
     const handleWinUpdate = () => {
-      loadAllTimeRanking();
       loadStreak();
     };
     window.addEventListener('rebusWinUpdated', handleWinUpdate);
 
-    // Listen for storage changes (in case ranking is updated in another tab)
-    const handleStorageChange = () => {
-      loadAllTimeRanking();
-    };
-    window.addEventListener('storage', handleStorageChange);
-
     return () => {
       window.removeEventListener('rebusWinUpdated', handleWinUpdate);
-      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
-
-  const loadAllTimeRanking = async () => {
-    try {
-      const anonId = localStorage.getItem('rebus_anon_id');
-      if (!anonId) {
-        setAllTimeRank(null);
-        return;
-      }
-
-      // Get today's date to filter out archive puzzles
-      const today = new Date().toISOString().split('T')[0];
-
-      // Get all puzzles to check which are archive (date < today)
-      const { data: puzzles, error: puzzlesError } = await supabase
-        .from('puzzles')
-        .select('id, date');
-
-      if (puzzlesError) throw puzzlesError;
-
-      const archivePuzzleIds = new Set(
-        puzzles?.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id) || []
-      );
-
-      // Get all correct submissions, excluding archive puzzles
-      const { data: submissions, error } = await supabase
-        .from('submissions')
-        .select('*')
-        .eq('is_correct', true)
-        .order('time_ms', { ascending: true });
-
-      if (error) throw error;
-
-      // Filter out submissions from archive puzzles
-      const dailySubmissions = submissions?.filter(
-        (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
-      ) || [];
-
-      // Group by anon_id and calculate stats
-      const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();
-
-      dailySubmissions.forEach((submission: Submission) => {
-        if (!submission.anon_id) return;
-
-        if (!userStats.has(submission.anon_id)) {
-          userStats.set(submission.anon_id, {
-            username: submission.username || null,
-            times: [],
-            puzzles: new Set(),
-          });
-        }
-
-        const stats = userStats.get(submission.anon_id)!;
-        stats.times.push(submission.time_ms);
-        stats.puzzles.add(submission.puzzle_id);
-        if (submission.username) {
-          stats.username = submission.username;
-        }
-      });
-
-      // Convert to leaderboard entries
-      const entries = Array.from(userStats.entries())
-        .map(([anon_id, stats]) => {
-          const totalTime = stats.times.reduce((sum, time) => sum + time, 0);
-          const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
-
-          return {
-            anon_id,
-            username: stats.username,
-            averageTime,
-            puzzlesWon: stats.puzzles.size,
-          };
-        })
-        .filter((entry) => entry.puzzlesWon >= 1) // At least 1 puzzle won
-        .sort((a, b) => {
-          // Sort by average time (ascending - fastest first)
-          if (a.averageTime === 0 && b.averageTime === 0) return 0;
-          if (a.averageTime === 0) return 1;
-          if (b.averageTime === 0) return -1;
-          return a.averageTime - b.averageTime;
-        });
-
-      // Find user's rank (1-indexed)
-      const userEntry = entries.findIndex((entry) => entry.anon_id === anonId);
-      if (userEntry !== -1) {
-        setAllTimeRank(userEntry + 1);
-      } else {
-        setAllTimeRank(null);
-      }
-    } catch (error) {
-      console.error('Error loading all-time ranking:', error);
-      setAllTimeRank(null);
-    }
-  };
 
   const loadStreak = async () => {
     try {
@@ -252,7 +149,6 @@ function App() {
           handleUsernameComplete={handleUsernameComplete}
           username={username}
           streak={streak}
-          allTimeRank={allTimeRank}
         />
       </TimerProvider>
     </BrowserRouter>
@@ -264,13 +160,11 @@ function AppContent({
   handleUsernameComplete,
   username,
   streak,
-  allTimeRank,
 }: {
   showUsernamePrompt: boolean;
   handleUsernameComplete: (username: string) => void;
   username: string | null;
   streak: number;
-  allTimeRank: number | null;
 }) {
   const { isTimerActive } = useTimer();
 
