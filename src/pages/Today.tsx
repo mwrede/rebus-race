@@ -820,24 +820,43 @@ function Today() {
         </div>
       )}
 
-      {/* Rules Modal */}
+      {/* Rules Modal - Cute Letter */}
       {showRules && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowRules(false)}>
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6 relative" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-amber-50 rounded-lg shadow-2xl max-w-lg w-full p-6 sm:p-8 relative border-2 border-amber-200" onClick={(e) => e.stopPropagation()} style={{ fontFamily: 'Georgia, serif' }}>
             <button
               onClick={() => setShowRules(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl font-bold"
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-amber-100 transition-colors"
             >
               ×
             </button>
-            <div className="pr-6">
-              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
-                A rebus puzzle is a centuries old tradition dating back to the.... WHO CARES... it's images put together meant to be a bit of a riddle. It's tricky, and created hand made by me, michael wrede, so may the best rebus puzzler win. Send me a message at{' '}
-                <a href="mailto:mwrede8@gmail.com" className="text-blue-600 hover:text-blue-800 underline">
-                  mwrede8@gmail.com
-                </a>{' '}
-                if you have thoughts about the game. Love, Michael
-              </p>
+            <div className="pr-8">
+              <div className="text-center mb-4">
+                <div className="text-xs sm:text-sm text-amber-700 italic">A letter from Michael</div>
+              </div>
+              <div className="space-y-3 text-sm sm:text-base text-gray-800 leading-relaxed">
+                <p>
+                  A rebus puzzle is a centuries old tradition dating back to the.... <span className="italic">WHO CARES</span>... it's images put together meant to be a bit of a riddle.
+                </p>
+                <p>
+                  It's tricky, and created hand made by me, <span className="font-semibold text-amber-800">michael wrede</span>, so may the best rebus puzzler win!
+                </p>
+                <p>
+                  Send me a message at{' '}
+                  <a href="mailto:mwrede8@gmail.com" className="text-blue-600 hover:text-blue-800 underline font-semibold">
+                    mwrede8@gmail.com
+                  </a>{' '}
+                  if you have thoughts about the game.
+                </p>
+                <div className="mt-6 pt-4 border-t border-amber-300 text-right">
+                  <p className="text-amber-900 font-semibold">
+                    Love,
+                  </p>
+                  <p className="text-amber-900 font-semibold text-lg">
+                    Michael
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

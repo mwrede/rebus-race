@@ -301,6 +301,9 @@ function AppContent({
                     🔥 {streak}
                   </div>
                 )}
+                <div className="text-[10px] sm:text-xs md:text-sm font-semibold text-blue-600 px-0.5 sm:px-1 md:px-2">
+                  🏆 {allTimeRank !== null ? `#${allTimeRank}` : '-'}
+                </div>
                 <Link
                   to="/today"
                   className="inline-flex items-center px-1 sm:px-2 md:px-3 py-1 text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 hover:text-gray-900"
@@ -309,14 +312,14 @@ function AppContent({
                 </Link>
                 <Link
                   to="/leaderboard"
-                  className="inline-flex items-center px-1 sm:px-2 md:px-3 py-1 text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="inline-flex items-center justify-center px-1 sm:px-2 md:px-3 py-1 text-lg sm:text-xl md:text-2xl text-gray-700 hover:text-gray-900"
                   title="Leaderboard"
                 >
                   🏆
                 </Link>
                 <Link
                   to="/archive"
-                  className="inline-flex items-center px-1 sm:px-2 md:px-3 py-1 text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 hover:text-gray-900"
+                  className="inline-flex items-center justify-center px-1 sm:px-2 md:px-3 py-1 text-lg sm:text-xl md:text-2xl text-gray-700 hover:text-gray-900"
                   title="Archive"
                 >
                   📚
