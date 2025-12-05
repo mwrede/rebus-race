@@ -29,6 +29,8 @@ function ArchiveDetail() {
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [incorrectCount, setIncorrectCount] = useState<number>(0);
   const [averageTime, setAverageTime] = useState<number | null>(null);
+  const [leaderboard, setLeaderboard] = useState<Submission[]>([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
   const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
@@ -97,10 +99,10 @@ function ArchiveDetail() {
     }
     setAnonId(anonIdValue);
 
-    // Load puzzle using the ID from URL params
-    if (id) {
-      loadPuzzle(id);
-    }
+      // Load puzzle using the ID from URL params
+      if (id) {
+        loadPuzzle(id);
+      }
 
     // Save game state before page unload (refresh/close)
     const handleBeforeUnload = () => {
@@ -239,6 +241,9 @@ function ArchiveDetail() {
 
       if (error) throw error;
       setPuzzle(data);
+      
+      // Load leaderboard for this puzzle
+      await loadLeaderboard(puzzleId);
 
       // Check if user has already played this puzzle
       const anonId = localStorage.getItem('rebus_anon_id');
@@ -350,6 +355,8 @@ function ArchiveDetail() {
 
         // Load ranking and past results for this specific puzzle
         await loadRankingAndPastResults(puzzle.id, data.id, timeMs);
+        // Reload leaderboard to include new submission
+        await loadLeaderboard(puzzle.id);
       } catch (error) {
         console.error('Error submitting answer:', error);
         alert('Failed to submit answer. Please try again.');
@@ -421,10 +428,46 @@ function ArchiveDetail() {
       const userRank = userIndex >= 0 ? userIndex + 1 : null;
       setRank(userRank);
       setTotalCorrect(allSubmissions?.length || 0);
+      
+      // Load leaderboard for this puzzle
+      await loadLeaderboard(puzzleId);
     } catch (error) {
       console.error('Error loading ranking and past results:', error);
     } finally {
       setLoadingStats(false);
+    }
+  };
+
+  const loadLeaderboard = async (puzzleId: string) => {
+    setLoadingLeaderboard(true);
+    try {
+      // Get all correct submissions for this puzzle
+      const { data: allSubmissions, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('puzzle_id', puzzleId)
+        .eq('is_correct', true)
+        .order('time_ms', { ascending: true });
+
+      if (error) throw error;
+
+      // Sort by time first, then by guess_count (fewer guesses is better)
+      const sorted = (allSubmissions || []).sort((a: Submission, b: Submission) => {
+        // First sort by time
+        if (a.time_ms !== b.time_ms) {
+          return a.time_ms - b.time_ms;
+        }
+        // If times are equal, sort by guess_count (fewer is better)
+        const aGuesses = a.guess_count || 999;
+        const bGuesses = b.guess_count || 999;
+        return aGuesses - bGuesses;
+      });
+
+      setLeaderboard(sorted);
+    } catch (error) {
+      console.error('Error loading leaderboard:', error);
+    } finally {
+      setLoadingLeaderboard(false);
     }
   };
 
@@ -535,9 +578,86 @@ function ArchiveDetail() {
 
       <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-1.5 sm:p-2 md:p-3 mb-2 sm:mb-3">
         <p className="text-[10px] sm:text-xs md:text-sm text-yellow-800 font-semibold text-center">
-          ⚠️ Archive puzzles do NOT count toward leaderboards or statistics
+          ⚠️ Archive puzzles do NOT count toward daily leaderboards or statistics
         </p>
       </div>
+
+      {/* Leaderboard for this puzzle */}
+      {puzzle && (
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-3 sm:mb-4">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-2 sm:mb-3 text-center">
+            Puzzle Leaderboard
+          </h2>
+          {loadingLeaderboard ? (
+            <div className="text-center py-4 text-gray-600 text-sm">
+              Loading leaderboard...
+            </div>
+          ) : leaderboard.length === 0 ? (
+            <div className="text-center py-4 text-gray-600 text-sm">
+              No correct submissions yet. Be the first!
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Rank
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Username
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Time
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-4 py-2 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Guesses
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {leaderboard.map((entry, index) => {
+                    const currentAnonId = localStorage.getItem('rebus_anon_id');
+                    const isCurrentUser = entry.anon_id === currentAnonId;
+                    return (
+                      <tr
+                        key={entry.id}
+                        className={`${index < 3 ? 'bg-yellow-50' : ''} ${isCurrentUser ? 'ring-2 ring-blue-500 bg-blue-100' : ''}`}
+                      >
+                        <td className="px-2 sm:px-3 md:px-4 py-2 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {index === 0 && <span className="text-lg sm:text-xl mr-1 sm:mr-2">🥇</span>}
+                            {index === 1 && <span className="text-lg sm:text-xl mr-1 sm:mr-2">🥈</span>}
+                            {index === 2 && <span className="text-lg sm:text-xl mr-1 sm:mr-2">🥉</span>}
+                            <span className="text-[10px] sm:text-xs font-medium text-gray-900">
+                              #{index + 1}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-4 py-2 whitespace-nowrap">
+                          <span className="text-[10px] sm:text-xs font-medium text-gray-900 truncate max-w-[100px] sm:max-w-none">
+                            {entry.username || 'Anonymous'}
+                          </span>
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-4 py-2 whitespace-nowrap">
+                          <span className="text-[10px] sm:text-xs text-gray-900 font-semibold">
+                            {(entry.time_ms / 1000).toFixed(2)}s
+                          </span>
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-4 py-2 whitespace-nowrap">
+                          <span className="text-[10px] sm:text-xs text-gray-900 font-semibold">
+                            {entry.guess_count || '—'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {alreadyPlayed && previousSubmission && (
         <div className="bg-gray-100 rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 mb-3 sm:mb-4 opacity-75">
