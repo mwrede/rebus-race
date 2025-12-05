@@ -268,57 +268,59 @@ function Archive() {
                         const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
                         const isPaused = pausedPuzzleIds.has(puzzle.id);
                         
-                        // Get gradient color based on success rate (or purple for Julia puzzles)
-                        const difficultyColor = isJuliaPuzzle ? 'rgb(147, 51, 234)' : getDifficultyColor(puzzle.successRate); // purple-600
-                        const borderColor = isJuliaPuzzle ? 'border-purple-500' : 'border-gray-300';
+                        // Create gradient border based on difficulty
+                        const gradientBorder = isJuliaPuzzle 
+                          ? 'linear-gradient(to right, rgb(147, 51, 234), rgb(147, 51, 234))'
+                          : `linear-gradient(to right, rgb(220, 38, 38), rgb(249, 140, 20), rgb(34, 197, 94))`;
 
                         return (
                           <Link
                             key={puzzle.id}
                             to={`/archive/${puzzle.id}`}
-                            className={`rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 relative ${borderColor} hover:shadow-lg`}
+                            className="rounded-lg shadow-md transition-all relative hover:shadow-lg"
                             style={{
-                              backgroundColor: isJuliaPuzzle 
-                                ? 'rgba(147, 51, 234, 0.15)' // purple background
-                                : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`,
+                              background: gradientBorder,
+                              padding: '2px',
                             }}
                           >
-                            <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
-                              {isPaused && (
-                                <span className="text-[9px] sm:text-[10px] font-semibold text-orange-700 bg-orange-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                  ⏸️ Paused
-                                </span>
-                              )}
-                              {isJuliaPuzzle && (
-                                <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                  julia
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-center">
-                              <div className="text-sm sm:text-base font-semibold mb-2 text-gray-900">
-                                {dateStr}
+                            <div className="bg-white rounded-lg h-full p-3 sm:p-4 relative">
+                              <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
+                                {isPaused && (
+                                  <span className="text-[9px] sm:text-[10px] font-semibold text-orange-700 bg-orange-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                    ⏸️ Paused
+                                  </span>
+                                )}
+                                {isJuliaPuzzle && (
+                                  <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                    julia
+                                  </span>
+                                )}
                               </div>
-                              <div className="space-y-0.5 mb-1">
-                                {puzzle.averageGuesses !== null && (
-                                  <div className="text-[10px] sm:text-xs font-medium text-gray-600">
-                                    Avg {puzzle.averageGuesses.toFixed(1)} guesses
-                                  </div>
-                                )}
-                                {puzzle.averageTime !== null && (
-                                  <div className="text-[10px] sm:text-xs font-medium text-gray-600">
-                                    Avg {(puzzle.averageTime / 1000).toFixed(2)}s
-                                  </div>
-                                )}
-                                {puzzle.successRate !== null ? (
-                                  <div className="text-[10px] sm:text-xs font-medium text-blue-600">
-                                    {puzzle.successRate.toFixed(1)}% correct
-                                  </div>
-                                ) : (
-                                  <div className="text-[10px] sm:text-xs font-medium text-gray-500">
-                                    No plays
-                                  </div>
-                                )}
+                              <div className="text-center">
+                                <div className="text-sm sm:text-base font-semibold mb-2 text-gray-900">
+                                  {dateStr}
+                                </div>
+                                <div className="space-y-0.5 mb-1">
+                                  {puzzle.averageGuesses !== null && (
+                                    <div className="text-[10px] sm:text-xs font-medium text-gray-600">
+                                      Avg {puzzle.averageGuesses.toFixed(1)} guesses
+                                    </div>
+                                  )}
+                                  {puzzle.averageTime !== null && (
+                                    <div className="text-[10px] sm:text-xs font-medium text-gray-600">
+                                      Avg {(puzzle.averageTime / 1000).toFixed(2)}s
+                                    </div>
+                                  )}
+                                  {puzzle.successRate !== null ? (
+                                    <div className="text-[10px] sm:text-xs font-medium text-blue-600">
+                                      {puzzle.successRate.toFixed(1)}% correct
+                                    </div>
+                                  ) : (
+                                    <div className="text-[10px] sm:text-xs font-medium text-gray-500">
+                                      No plays
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </Link>
@@ -364,72 +366,72 @@ function Archive() {
                           // Check if this is a Julia puzzle (vegemite, adventure, rugby)
                           const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
                           
-                          // Get gradient color based on success rate (or purple for Julia puzzles)
-                          const difficultyColor = isJuliaPuzzle ? 'rgb(147, 51, 234)' : getDifficultyColor(puzzle.successRate); // purple-600
-                          const borderColor = isPlayed 
-                            ? (isJuliaPuzzle ? 'border-purple-400' : 'border-gray-400')
-                            : (isJuliaPuzzle ? 'border-purple-500' : 'border-gray-300');
+                          // Create gradient border based on difficulty
+                          const gradientBorder = isJuliaPuzzle 
+                            ? 'linear-gradient(to right, rgb(147, 51, 234), rgb(147, 51, 234))'
+                            : `linear-gradient(to right, rgb(220, 38, 38), rgb(249, 140, 20), rgb(34, 197, 94))`;
 
                           return (
                             <Link
                               key={puzzle.id}
                               to={`/archive/${puzzle.id}`}
-                              className={`rounded-lg shadow-md border-2 transition-all p-3 sm:p-4 relative ${
-                                isPlayed ? `${borderColor} opacity-90` : `${borderColor} hover:shadow-lg`
+                              className={`rounded-lg shadow-md transition-all relative ${
+                                isPlayed ? 'opacity-90' : 'hover:shadow-lg'
                               }`}
                               style={{
-                                backgroundColor: isPlayed 
-                                  ? (isJuliaPuzzle ? 'rgba(147, 51, 234, 0.1)' : 'rgba(156, 163, 175, 0.1)') // purple or grey background for already played
-                                  : (isJuliaPuzzle ? 'rgba(147, 51, 234, 0.15)' : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`),
+                                background: gradientBorder,
+                                padding: '2px',
                               }}
                             >
-                              <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
-                                {isPaused && (
-                                  <span className="text-[9px] sm:text-[10px] font-semibold text-orange-700 bg-orange-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                    ⏸️ Paused
-                                  </span>
-                                )}
-                                {isPlayed && (
-                                  <span className="text-[9px] sm:text-[10px] font-semibold text-gray-600 bg-gray-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                    Already played
-                                  </span>
-                                )}
-                                {isJuliaPuzzle && (
-                                  <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                    julia
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-center">
-                                <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? 'text-gray-600' : 'text-gray-900'}`}>
-                                  {dateStr}
-                                </div>
-                                <div className="space-y-0.5 mb-1">
-                                  {puzzle.averageGuesses !== null && (
-                                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
-                                      Avg {puzzle.averageGuesses.toFixed(1)} guesses
-                                    </div>
+                              <div className="bg-white rounded-lg h-full p-3 sm:p-4 relative">
+                                <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
+                                  {isPaused && (
+                                    <span className="text-[9px] sm:text-[10px] font-semibold text-orange-700 bg-orange-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                      ⏸️ Paused
+                                    </span>
                                   )}
-                                  {puzzle.averageTime !== null && (
-                                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
-                                      Avg {(puzzle.averageTime / 1000).toFixed(2)}s
-                                    </div>
+                                  {isPlayed && (
+                                    <span className="text-[9px] sm:text-[10px] font-semibold text-gray-600 bg-gray-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                      Already played
+                                    </span>
                                   )}
-                                  {puzzle.successRate !== null ? (
-                                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-blue-600'}`}>
-                                      {puzzle.successRate.toFixed(1)}% correct
-                                    </div>
-                                  ) : (
-                                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-500'}`}>
-                                      No plays
-                                    </div>
+                                  {isJuliaPuzzle && (
+                                    <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                      julia
+                                    </span>
                                   )}
                                 </div>
-                                {isPlayed && playedInfo && (
-                                  <div className="text-[10px] sm:text-xs font-medium text-gray-600 mt-1 pt-1 border-t border-gray-200">
-                                    <div>You: {playedInfo.guess_count !== null ? `${playedInfo.guess_count} guesses` : '—'} • {(playedInfo.time_ms / 1000).toFixed(2)}s</div>
+                                <div className="text-center">
+                                  <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? 'text-gray-600' : 'text-gray-900'}`}>
+                                    {dateStr}
                                   </div>
-                                )}
+                                  <div className="space-y-0.5 mb-1">
+                                    {puzzle.averageGuesses !== null && (
+                                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
+                                        Avg {puzzle.averageGuesses.toFixed(1)} guesses
+                                      </div>
+                                    )}
+                                    {puzzle.averageTime !== null && (
+                                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
+                                        Avg {(puzzle.averageTime / 1000).toFixed(2)}s
+                                      </div>
+                                    )}
+                                    {puzzle.successRate !== null ? (
+                                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-blue-600'}`}>
+                                        {puzzle.successRate.toFixed(1)}% correct
+                                      </div>
+                                    ) : (
+                                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-500'}`}>
+                                        No plays
+                                      </div>
+                                    )}
+                                  </div>
+                                  {isPlayed && playedInfo && (
+                                    <div className="text-[10px] sm:text-xs font-medium text-gray-600 mt-1 pt-1 border-t border-gray-200">
+                                      <div>You: {playedInfo.guess_count !== null ? `${playedInfo.guess_count} guesses` : '—'} • {(playedInfo.time_ms / 1000).toFixed(2)}s</div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </Link>
                           );
