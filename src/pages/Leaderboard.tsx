@@ -250,7 +250,7 @@ function Leaderboard() {
   };
 
 
-  if (loading) {
+  if (loading && loadingAllTime) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="text-gray-600">Loading leaderboard...</div>
@@ -258,46 +258,48 @@ function Leaderboard() {
     );
   }
 
-  if (!puzzle) {
-    return (
-      <div className="text-center py-12">
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">No Puzzle Today</h1>
-        <p className="text-gray-600">There's no puzzle today, so there's no leaderboard yet.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-4xl mx-auto px-2 sm:px-4 pb-4">
       <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 text-center">
-        Today's Leaderboard
+        Leaderboard
       </h1>
 
-      {(averageTime !== null || correctPercentage !== null) && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4 md:mb-6">
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 text-xs sm:text-sm">
-            {averageTime !== null && (
-              <div className="font-semibold text-gray-900">
-                Avg Time: <span className="text-blue-700">{(averageTime / 1000).toFixed(2)}s</span>
-              </div>
-            )}
-            {correctPercentage !== null && (
-              <div className="font-semibold text-gray-900">
-                Success Rate: <span className="text-blue-700">{correctPercentage.toFixed(1)}%</span>
-              </div>
-            )}
-          </div>
+      {!puzzle && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4 mb-4 text-center">
+          <p className="text-sm text-yellow-800">No puzzle today, so there's no today's leaderboard yet.</p>
         </div>
       )}
 
-      {submissions.length === 0 && incorrectSubmissions.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center">
-          <p className="text-gray-600">No submissions yet. Be the first!</p>
-        </div>
-      ) : (
+      {puzzle && (
         <>
-          {/* Today's Leaderboard */}
-          <div className="mb-6 sm:mb-8">
+          {(averageTime !== null || correctPercentage !== null) && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4 md:mb-6">
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+                {averageTime !== null && (
+                  <div className="font-semibold text-gray-900">
+                    Avg Time: <span className="text-blue-700">{(averageTime / 1000).toFixed(2)}s</span>
+                  </div>
+                )}
+                {correctPercentage !== null && (
+                  <div className="font-semibold text-gray-900">
+                    Success Rate: <span className="text-blue-700">{correctPercentage.toFixed(1)}%</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {submissions.length === 0 && incorrectSubmissions.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center mb-6">
+              <p className="text-gray-600">No submissions yet. Be the first!</p>
+            </div>
+          ) : (
+            <>
+              {/* Today's Leaderboard */}
+              <div className="mb-6 sm:mb-8">
+                <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3 text-center">
+                  Today's Leaderboard
+                </h2>
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -388,6 +390,8 @@ function Leaderboard() {
               </div>
             </div>
           </div>
+            </>
+          )}
         </>
       )}
 
