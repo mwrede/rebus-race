@@ -7,6 +7,7 @@ interface PuzzleWithStats extends Puzzle {
   successRate: number | null;
   averageTime: number | null;
   averageGuesses: number | null;
+  totalPlayers: number;
 }
 
 // Function to calculate gradient color based on success rate
@@ -124,6 +125,8 @@ function Archive() {
           let successRate: number | null = null;
           let averageTime: number | null = null;
           let averageGuesses: number | null = null;
+          const totalPlayers = submissions?.length || 0;
+          
           if (!subError && submissions && submissions.length > 0) {
             const correctCount = submissions.filter((s: { is_correct: boolean }) => s.is_correct).length;
             successRate = (correctCount / submissions.length) * 100;
@@ -148,6 +151,7 @@ function Archive() {
             successRate,
             averageTime,
             averageGuesses,
+            totalPlayers,
           };
         })
       );
@@ -268,10 +272,14 @@ function Archive() {
                         const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
                         const isPaused = pausedPuzzleIds.has(puzzle.id);
                         
-                        // Create gradient border based on difficulty
-                        const gradientBorder = isJuliaPuzzle 
-                          ? 'linear-gradient(to right, rgb(147, 51, 234), rgb(147, 51, 234))'
-                          : `linear-gradient(to right, rgb(220, 38, 38), rgb(249, 140, 20), rgb(34, 197, 94))`;
+                        // Create border color based on success rate (difficulty)
+                        // Low success rate = red (hard), medium = orange, high = green (easy)
+                        const difficultyColor = isJuliaPuzzle 
+                          ? 'rgb(147, 51, 234)' // purple for Julia puzzles
+                          : getDifficultyColor(puzzle.successRate);
+                        
+                        // Use the difficulty color as a solid border (gradient with same color)
+                        const gradientBorder = `linear-gradient(to right, ${difficultyColor}, ${difficultyColor})`;
 
                         return (
                           <Link
@@ -301,6 +309,9 @@ function Archive() {
                                   {dateStr}
                                 </div>
                                 <div className="space-y-0.5 mb-1">
+                                  <div className="text-[10px] sm:text-xs font-medium text-gray-700">
+                                    {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'player' : 'players'}
+                                  </div>
                                   {puzzle.averageGuesses !== null && (
                                     <div className="text-[10px] sm:text-xs font-medium text-gray-600">
                                       Avg {puzzle.averageGuesses.toFixed(1)} guesses
@@ -366,10 +377,14 @@ function Archive() {
                           // Check if this is a Julia puzzle (vegemite, adventure, rugby)
                           const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
                           
-                          // Create gradient border based on difficulty
-                          const gradientBorder = isJuliaPuzzle 
-                            ? 'linear-gradient(to right, rgb(147, 51, 234), rgb(147, 51, 234))'
-                            : `linear-gradient(to right, rgb(220, 38, 38), rgb(249, 140, 20), rgb(34, 197, 94))`;
+                          // Create border color based on success rate (difficulty)
+                          // Low success rate = red (hard), medium = orange, high = green (easy)
+                          const difficultyColor = isJuliaPuzzle 
+                            ? 'rgb(147, 51, 234)' // purple for Julia puzzles
+                            : getDifficultyColor(puzzle.successRate);
+                          
+                          // Use the difficulty color as a solid border (gradient with same color)
+                          const gradientBorder = `linear-gradient(to right, ${difficultyColor}, ${difficultyColor})`;
 
                           return (
                             <Link
@@ -406,6 +421,9 @@ function Archive() {
                                     {dateStr}
                                   </div>
                                   <div className="space-y-0.5 mb-1">
+                                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-700'}`}>
+                                      {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'player' : 'players'}
+                                    </div>
                                     {puzzle.averageGuesses !== null && (
                                       <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
                                         Avg {puzzle.averageGuesses.toFixed(1)} guesses
