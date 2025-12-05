@@ -133,7 +133,7 @@ function Leaderboard() {
             const submissionsWithGuessesAndStreak = await Promise.all(
               correctSubmissions.map(async (s: Submission) => {
                 // Get all guesses for this submission (same puzzle_id and anon_id)
-                const { data: guesses } = await supabase
+                const { data: guesses, error: guessesError } = await supabase
                   .from('guesses')
                   .select('*')
                   .eq('puzzle_id', puzzleData.id)
@@ -494,7 +494,7 @@ function Leaderboard() {
                         <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
                           {submission.guesses && submission.guesses.length > 0 ? (
                             <ul className="list-disc list-inside text-[9px] sm:text-[10px] text-gray-700 space-y-0.5">
-                              {submission.guesses.map((guess) => (
+                              {submission.guesses.map((guess, idx) => (
                                 <li key={guess.id} className={guess.is_correct ? 'text-green-600 font-semibold' : 'text-gray-600'}>
                                   {guess.guess}
                                 </li>

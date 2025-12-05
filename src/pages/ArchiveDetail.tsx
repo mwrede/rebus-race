@@ -25,12 +25,14 @@ function ArchiveDetail() {
   const [guessCount, setGuessCount] = useState(0);
   const [hintUsed, setHintUsed] = useState(false);
   const [showHintWarning, setShowHintWarning] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [incorrectCount, setIncorrectCount] = useState<number>(0);
   const [averageTime, setAverageTime] = useState<number | null>(null);
   const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
+  const MAX_TIME_SECONDS = 300; // 5 minutes
 
   useEffect(() => {
     // Get or create anonymous ID
@@ -44,29 +46,11 @@ function ArchiveDetail() {
     // Load puzzle using the ID from URL params
     if (id) {
       loadPuzzle(id);
-      
-      // Check if there's an active timer in localStorage for this archive puzzle
-      const storedStartTime = localStorage.getItem(`rebus_archive_${id}_startTime`);
-      const storedIsReady = localStorage.getItem(`rebus_archive_${id}_isReady`);
-      
-      if (storedStartTime && storedIsReady === 'true' && !submitted) {
-        const startTimeValue = parseInt(storedStartTime, 10);
-        // Only restore if it's recent (within last 24 hours)
-        if (Date.now() - startTimeValue < 24 * 60 * 60 * 1000) {
-          setStartTime(startTimeValue);
-          setIsReady(true);
-          setTimerActive(true);
-        } else {
-          // Clear old timer data
-          localStorage.removeItem(`rebus_archive_${id}_startTime`);
-          localStorage.removeItem(`rebus_archive_${id}_isReady`);
-        }
-      }
     }
 
-    // Cleanup: don't reset timer active here - let it persist
+    // Cleanup: reset timer when component unmounts
     return () => {
-      // Don't reset timer active here
+      setTimerActive(false);
     };
   }, [id, setTimerActive]);
 
@@ -76,23 +60,86 @@ function ArchiveDetail() {
         if (startTime) {
           const elapsed = Math.floor((Date.now() - startTime) / 1000);
           setTimeElapsed(elapsed);
+          
+          // Auto-submit when 5 minutes is reached
+          if (elapsed >= MAX_TIME_SECONDS && !submitted && puzzle && !isSubmitting) {
+            clearInterval(timer);
+            const submitTimeout = async () => {
+              setIsSubmitting(true);
+              const timeMs = MAX_TIME_SECONDS * 1000; // 5 minutes in ms
+
+              try {
+                // Save all wrong guesses that were made before timeout
+                const username = getUsername();
+                for (let i = 0; i < wrongGuesses.length; i++) {
+                  await supabase
+                    .from('guesses')
+                    .insert({
+                      puzzle_id: puzzle.id,
+                      anon_id: anonId,
+                      guess: wrongGuesses[i],
+                      is_correct: false,
+                      guess_number: i + 1,
+                      time_ms: timeMs, // Use timeout time for all guesses
+                      username: username || null,
+                    });
+                }
+
+                // Save the final answer (if any) as a guess
+                if (answer.trim()) {
+                  await supabase
+                    .from('guesses')
+                    .insert({
+                      puzzle_id: puzzle.id,
+                      anon_id: anonId,
+                      guess: answer.trim(),
+                      is_correct: false,
+                      guess_number: wrongGuesses.length + 1,
+                      time_ms: timeMs,
+                      username: username || null,
+                    });
+                }
+
+                const { data, error } = await supabase
+                  .from('submissions')
+                  .insert({
+                    puzzle_id: puzzle.id,
+                    anon_id: anonId,
+                    answer: answer.trim() || '',
+                    is_correct: false,
+                    time_ms: timeMs,
+                    username: username || null,
+                    guess_count: MAX_GUESSES, // Timeout = used all guesses
+                  })
+                  .select()
+                  .single();
+
+                if (error) throw error;
+
+                setSubmission(data);
+                setSubmitted(true);
+                setTimerActive(false); // Re-enable navigation after timeout
+                // Don't set alreadyPlayed yet - let the result page show first
+                // Load incorrect percentage for timeout
+                await loadIncorrectPercentage(puzzle.id);
+              } catch (error) {
+                console.error('Error submitting answer:', error);
+              } finally {
+                setIsSubmitting(false);
+              }
+            };
+            submitTimeout();
+          }
         }
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [isReady, startTime, submitted]);
+  }, [isReady, startTime, submitted, puzzle, isSubmitting, anonId, answer]);
 
   const handleReady = () => {
-    const now = Date.now();
     setIsReady(true);
-    setStartTime(now);
+    setStartTime(Date.now());
     setTimerActive(true); // Lock in the player - hide nav and prevent navigation
-    
-    // Store timer state in localStorage
-    if (id && puzzle) {
-      localStorage.setItem(`rebus_archive_${id}_startTime`, now.toString());
-      localStorage.setItem(`rebus_archive_${id}_isReady`, 'true');
-    }
   };
 
   const handleHintRequest = () => {
@@ -100,13 +147,11 @@ function ArchiveDetail() {
   };
 
   const handleHintConfirm = () => {
-    if (startTime && id) {
+    if (startTime) {
       // Add 60 seconds by subtracting 60 seconds from startTime
-      const newStartTime = startTime - 60000;
-      setStartTime(newStartTime);
+      setStartTime(startTime - 60000);
       setHintUsed(true);
-      // Update localStorage
-      localStorage.setItem(`rebus_archive_${id}_startTime`, newStartTime.toString());
+      setShowHint(true); // Show the hint after confirming
     }
     setShowHintWarning(false);
   };
@@ -143,13 +188,6 @@ function ArchiveDetail() {
           setPreviousSubmission(existingSubmission);
           setSubmitted(true);
           setSubmission(existingSubmission);
-          
-          // Clear timer from localStorage if returning to already-played puzzle
-          if (id) {
-            localStorage.removeItem(`rebus_archive_${id}_startTime`);
-            localStorage.removeItem(`rebus_archive_${id}_isReady`);
-          }
-          
           // Load ranking if they got it correct
           if (existingSubmission.is_correct) {
             await loadRankingAndPastResults(puzzleId, existingSubmission.id, existingSubmission.time_ms);
@@ -277,13 +315,6 @@ function ArchiveDetail() {
           setSubmission(data);
           setSubmitted(true);
           setTimerActive(false); // Re-enable navigation after submission
-          
-          // Clear timer from localStorage
-          if (id) {
-            localStorage.removeItem(`rebus_archive_${id}_startTime`);
-            localStorage.removeItem(`rebus_archive_${id}_isReady`);
-          }
-          
           // Don't set alreadyPlayed yet - let the result page show first
           // Load incorrect percentage
           await loadIncorrectPercentage(puzzle.id);
@@ -551,7 +582,7 @@ function ArchiveDetail() {
                 Are you ready?
               </h2>
               <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">
-                Once you start, you'll have unlimited time and 5 guesses to solve the puzzle!
+                Once you start, you'll have 5 minutes and 5 guesses to solve the puzzle!
               </p>
               <button
                 onClick={handleReady}
@@ -563,17 +594,26 @@ function ArchiveDetail() {
           ) : (
             <>
               <div className="text-center mb-1 sm:mb-1.5">
-                <div className="text-lg sm:text-xl md:text-2xl font-bold mb-0.5 text-blue-600">
+                <div className={`text-lg sm:text-xl md:text-2xl font-bold mb-0.5 ${
+                  timeElapsed >= MAX_TIME_SECONDS ? 'text-red-600' : 'text-blue-600'
+                }`}>
                   {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}
                 </div>
                 <div className="text-[8px] sm:text-[9px] text-gray-600">
-                  Time elapsed
+                  {timeElapsed >= MAX_TIME_SECONDS ? "Time's up!" : 'Time elapsed'}
                 </div>
                 <div className="text-[8px] sm:text-[9px] text-gray-600 mt-0.5">
                   {MAX_GUESSES - guessCount} {MAX_GUESSES - guessCount === 1 ? 'guess' : 'guesses'} remaining
                 </div>
               </div>
 
+              {timeElapsed >= MAX_TIME_SECONDS && (
+                <div className="mb-2 p-2 bg-red-50 border-2 border-red-300 rounded-lg">
+                  <p className="text-xs sm:text-sm text-red-800 font-semibold text-center">
+                    Incorrect, you wont get it i promise
+                  </p>
+                </div>
+              )}
 
               {wrongGuesses.length > 0 && (
                 <div className="mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
@@ -632,6 +672,26 @@ function ArchiveDetail() {
                 </div>
               )}
 
+              {showHint && puzzle?.hint && (
+                <div className="mb-2 p-3 bg-purple-50 border-2 border-purple-300 rounded-lg">
+                  <div className="flex items-start justify-between mb-1">
+                    <h4 className="text-xs sm:text-sm font-bold text-purple-900">
+                      💡 Hint
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowHint(false)}
+                      className="text-purple-600 hover:text-purple-800 text-sm font-semibold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="text-xs sm:text-sm text-purple-800">
+                    {puzzle.hint}
+                  </p>
+                </div>
+              )}
+
               <div className="mb-1 sm:mb-1.5">
                 <img
                   src={puzzle.image_url}
@@ -653,7 +713,7 @@ function ArchiveDetail() {
                     id="answer"
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
-                    disabled={submitted || guessCount >= MAX_GUESSES}
+                    disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES}
                     className="w-full px-2 py-1 text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                     placeholder="Enter your answer..."
                     autoFocus
@@ -662,7 +722,7 @@ function ArchiveDetail() {
                 </div>
                 <button
                   type="submit"
-                  disabled={submitted || guessCount >= MAX_GUESSES || !answer.trim() || isSubmitting}
+                  disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES || !answer.trim() || isSubmitting}
                   className="w-full bg-blue-600 text-white py-1.5 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Answer'}
