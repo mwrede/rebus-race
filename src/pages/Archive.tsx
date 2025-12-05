@@ -213,6 +213,13 @@ function Archive() {
         Puzzle Archive
       </h1>
 
+      {/* Info Note */}
+      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-2 sm:p-3 mb-3 sm:mb-4 md:mb-6">
+        <p className="text-xs sm:text-sm text-blue-800 font-semibold text-center">
+          📊 Archive puzzles contribute to your all-time leaderboard
+        </p>
+      </div>
+
       {/* Difficulty Legend */}
       <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-3 sm:mb-4 md:mb-6">
         <div className="text-xs sm:text-sm font-semibold text-gray-900 mb-2 text-center">

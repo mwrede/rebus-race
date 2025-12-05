@@ -577,9 +577,9 @@ function ArchiveDetail() {
         })}
       </h1>
 
-      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-1.5 sm:p-2 md:p-3 mb-2 sm:mb-3">
-        <p className="text-[10px] sm:text-xs md:text-sm text-yellow-800 font-semibold text-center">
-          ⚠️ Archive puzzles do NOT count toward daily leaderboards or statistics
+      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-1.5 sm:p-2 md:p-3 mb-2 sm:mb-3">
+        <p className="text-[10px] sm:text-xs md:text-sm text-blue-800 font-semibold text-center">
+          📊 Archive puzzles contribute to your all-time leaderboard
         </p>
       </div>
 
@@ -731,9 +731,6 @@ function ArchiveDetail() {
                   {incorrectPercentage.toFixed(1)}% of players also got it wrong
                 </div>
               )}
-              <div className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-3">
-                (This result does not count toward leaderboards)
-              </div>
               <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
                 <button
                   onClick={() => {
@@ -950,7 +947,7 @@ function ArchiveDetail() {
                   A rebus puzzle is a centuries old tradition dating back to the.... <span className="italic">WHO CARES</span>... it's images put together meant to be a bit of a riddle.
                 </p>
                 <p>
-                  It's tricky, and created hand made by me, <span className="font-semibold text-amber-800">michael wrede</span>, so may the best rebus puzzler win!
+                  It's tricky, and created by hand by me, <span className="font-semibold text-amber-800">michael wrede</span>, so may the best rebus puzzler win!
                 </p>
                 <p>
                   Send me a message at{' '}
