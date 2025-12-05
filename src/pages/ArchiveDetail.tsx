@@ -23,9 +23,6 @@ function ArchiveDetail() {
   const [totalCorrect, setTotalCorrect] = useState<number>(0);
   const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
   const [guessCount, setGuessCount] = useState(0);
-  const [hintUsed, setHintUsed] = useState(false);
-  const [showHintWarning, setShowHintWarning] = useState(false);
-  const [showHint, setShowHint] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [incorrectCount, setIncorrectCount] = useState<number>(0);
@@ -140,24 +137,6 @@ function ArchiveDetail() {
     setIsReady(true);
     setStartTime(Date.now());
     setTimerActive(true); // Lock in the player - hide nav and prevent navigation
-  };
-
-  const handleHintRequest = () => {
-    setShowHintWarning(true);
-  };
-
-  const handleHintConfirm = () => {
-    if (startTime) {
-      // Add 60 seconds by subtracting 60 seconds from startTime
-      setStartTime(startTime - 60000);
-      setHintUsed(true);
-      setShowHint(true); // Show the hint after confirming
-    }
-    setShowHintWarning(false);
-  };
-
-  const handleHintCancel = () => {
-    setShowHintWarning(false);
   };
 
   const loadPuzzle = async (puzzleId: string) => {
@@ -630,65 +609,6 @@ function ArchiveDetail() {
                       </span>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {guessCount >= 4 && !hintUsed && (
-                <div className="mb-2 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={handleHintRequest}
-                    className="bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-lg hover:bg-purple-700 font-semibold text-xs sm:text-sm shadow-md"
-                  >
-                    💡 Get Hint
-                  </button>
-                </div>
-              )}
-
-              {showHintWarning && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 max-w-md w-full">
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3">
-                      Warning: Hint Penalty
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-700 mb-4">
-                      Using a hint will add <span className="font-bold text-red-600">+1 minute</span> to your timer. Are you sure you want to continue?
-                    </p>
-                    <div className="flex gap-3 justify-end">
-                      <button
-                        onClick={handleHintCancel}
-                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium text-sm"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleHintConfirm}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm"
-                      >
-                        Use Hint
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {showHint && puzzle?.hint && (
-                <div className="mb-2 p-3 bg-purple-50 border-2 border-purple-300 rounded-lg">
-                  <div className="flex items-start justify-between mb-1">
-                    <h4 className="text-xs sm:text-sm font-bold text-purple-900">
-                      💡 Hint
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => setShowHint(false)}
-                      className="text-purple-600 hover:text-purple-800 text-sm font-semibold"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <p className="text-xs sm:text-sm text-purple-800">
-                    {puzzle.hint}
-                  </p>
                 </div>
               )}
 
