@@ -3,6 +3,7 @@ export interface Puzzle {
   date: string;
   image_url: string;
   answer: string;
+  hint?: string | null;
 }
 
 export interface Submission {

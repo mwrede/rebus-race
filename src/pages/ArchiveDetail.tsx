@@ -23,6 +23,8 @@ function ArchiveDetail() {
   const [totalCorrect, setTotalCorrect] = useState<number>(0);
   const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
   const [guessCount, setGuessCount] = useState(0);
+  const [showHintConfirmation, setShowHintConfirmation] = useState(false);
+  const [hintUsed, setHintUsed] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [incorrectCount, setIncorrectCount] = useState<number>(0);
@@ -30,6 +32,7 @@ function ArchiveDetail() {
   const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
+  const HINT_PENALTY_SECONDS = 60; // 1 minute penalty for using hint
 
   useEffect(() => {
     // Get or create anonymous ID
@@ -137,6 +140,23 @@ function ArchiveDetail() {
     setIsReady(true);
     setStartTime(Date.now());
     setTimerActive(true); // Lock in the player - hide nav and prevent navigation
+  };
+
+  const handleHintClick = () => {
+    setShowHintConfirmation(true);
+  };
+
+  const handleHintConfirm = () => {
+    if (startTime) {
+      // Add 60 seconds to the start time (effectively subtracting from elapsed time)
+      setStartTime(startTime - HINT_PENALTY_SECONDS * 1000);
+    }
+    setHintUsed(true);
+    setShowHintConfirmation(false);
+  };
+
+  const handleHintCancel = () => {
+    setShowHintConfirmation(false);
   };
 
   const loadPuzzle = async (puzzleId: string) => {
@@ -612,6 +632,30 @@ function ArchiveDetail() {
                 </div>
               )}
 
+              {/* Hint button - appears after 4 guesses */}
+              {guessCount >= 4 && puzzle?.hint && !hintUsed && !submitted && (
+                <div className="mb-2">
+                  <button
+                    onClick={handleHintClick}
+                    className="w-full bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 font-medium text-xs sm:text-sm shadow-md"
+                  >
+                    💡 Get Hint (Adds 1 minute to your time)
+                  </button>
+                </div>
+              )}
+
+              {/* Hint display - shown after hint is used */}
+              {hintUsed && puzzle?.hint && (
+                <div className="mb-2 p-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                  <div className="text-[10px] sm:text-xs font-semibold text-yellow-800 mb-1">
+                    💡 Hint:
+                  </div>
+                  <div className="text-xs sm:text-sm text-yellow-900">
+                    {puzzle.hint}
+                  </div>
+                </div>
+              )}
+
               <div className="mb-1 sm:mb-1.5">
                 <img
                   src={puzzle.image_url}
@@ -650,6 +694,35 @@ function ArchiveDetail() {
               </form>
             </>
           )}
+        </div>
+      )}
+
+      {/* Hint Confirmation Dialog */}
+      {showHintConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3">
+              Use Hint?
+            </h3>
+            <p className="text-sm sm:text-base text-gray-700 mb-4">
+              Using a hint will add <span className="font-semibold text-red-600">1 minute (60 seconds)</span> to your time.
+              Are you sure you want to continue?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleHintCancel}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleHintConfirm}
+                className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 font-medium text-sm"
+              >
+                Yes, Use Hint
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
