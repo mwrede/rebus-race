@@ -13,17 +13,23 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
 
   const checkUsernameAvailability = async (username: string): Promise<boolean> => {
     try {
-      // Check if username already exists in submissions
+      // Check if username already exists in submissions (case-insensitive)
+      // Get all usernames and check case-insensitively
       const { data, error } = await supabase
         .from('submissions')
         .select('username')
-        .eq('username', username)
-        .limit(1);
+        .not('username', 'is', null);
 
       if (error) throw error;
 
-      // Username is available if no results found
-      return !data || data.length === 0;
+      // Check if any username matches case-insensitively
+      const usernameLower = username.toLowerCase();
+      const isTaken = data?.some((submission: { username: string }) => 
+        submission.username && submission.username.toLowerCase() === usernameLower
+      );
+
+      // Username is available if not taken
+      return !isTaken;
     } catch (error) {
       console.error('Error checking username availability:', error);
       // On error, allow the username (better UX than blocking)
