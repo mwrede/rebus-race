@@ -308,8 +308,12 @@ function Today() {
 
   const loadAllTimeStats = async () => {
     try {
-      // Get today's date to filter out archive puzzles
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in local timezone (YYYY-MM-DD format) - same as loadTodayPuzzle
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
 
       // Get all puzzles to check which are archive (date < today)
       const { data: puzzles, error: puzzlesError } = await supabase
@@ -453,8 +457,12 @@ function Today() {
       setRank(userRank);
       setTotalCorrect(allSubmissions?.length || 0);
 
-      // Get today's date to filter out archive puzzles
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in local timezone (YYYY-MM-DD format) - same as loadTodayPuzzle
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
 
       // Get all puzzles to check which are archive (date < today)
       const { data: puzzles, error: puzzlesError } = await supabase
