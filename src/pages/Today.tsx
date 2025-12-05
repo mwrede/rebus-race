@@ -30,6 +30,7 @@ function Today() {
   const [guessCount, setGuessCount] = useState(0);
   const [showHintConfirmation, setShowHintConfirmation] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
@@ -676,6 +677,12 @@ function Today() {
               >
                 Start Timer! ⏱️
               </button>
+              <button
+                onClick={() => setShowRules(true)}
+                className="mt-2 sm:mt-3 text-gray-600 hover:text-gray-800 text-xs sm:text-sm underline"
+              >
+                Rules
+              </button>
             </div>
           ) : (
             <>
@@ -808,6 +815,29 @@ function Today() {
               >
                 Yes, Use Hint
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rules Modal */}
+      {showRules && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowRules(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6 relative" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowRules(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl font-bold"
+            >
+              ×
+            </button>
+            <div className="pr-6">
+              <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
+                A rebus puzzle is a centuries old tradition dating back to the.... WHO CARES... it's images put together meant to be a bit of a riddle. It's tricky, and created hand made by me, michael wrede, so may the best rebus puzzler win. Send me a message at{' '}
+                <a href="mailto:mwrede8@gmail.com" className="text-blue-600 hover:text-blue-800 underline">
+                  mwrede8@gmail.com
+                </a>{' '}
+                if you have thoughts about the game. Love, Michael
+              </p>
             </div>
           </div>
         </div>

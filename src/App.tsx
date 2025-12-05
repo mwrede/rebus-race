@@ -314,13 +314,15 @@ function AppContent({
                   to="/leaderboard"
                   className="inline-flex items-center px-1 sm:px-2 md:px-3 py-1 text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 hover:text-gray-900"
                 >
-                  Leaderboard
+                  <span className="mr-1">🏆</span>
+                  <span>Leaderboard</span>
                 </Link>
                 <Link
                   to="/archive"
                   className="inline-flex items-center px-1 sm:px-2 md:px-3 py-1 text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 hover:text-gray-900"
                 >
-                  Archive
+                  <span className="mr-1">📚</span>
+                  <span>Archive</span>
                 </Link>
               </div>
             </div>
