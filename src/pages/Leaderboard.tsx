@@ -65,74 +65,86 @@ function Leaderboard() {
         // Get correct submissions
         const correctSubmissions = (allSubmissionsData || []).filter((s: Submission) => s.is_correct);
         
-        // Calculate streaks for each user
+        // Sort by time (fastest first) - do this first to ensure we always show submissions
+        const sortedByTime = [...correctSubmissions].sort((a: Submission, b: Submission) => a.time_ms - b.time_ms);
+        
+        // Calculate streaks for each user (non-blocking)
         const today = new Date().toISOString().split('T')[0];
-        const { data: allPuzzles, error: puzzlesError } = await supabase
-          .from('puzzles')
-          .select('id, date')
-          .order('date', { ascending: false });
+        let streakMap = new Map<string, number>();
+        
+        try {
+          const { data: allPuzzles } = await supabase
+            .from('puzzles')
+            .select('id, date')
+            .order('date', { ascending: false });
 
-        if (!puzzlesError && allPuzzles) {
-          const archivePuzzleIds = new Set(
-            allPuzzles.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id)
-          );
-
-          const dailyPuzzles = allPuzzles.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id));
-          dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
-
-          const { data: allDailySubmissions, error: dailySubsError } = await supabase
-            .from('submissions')
-            .select('anon_id, puzzle_id, is_correct, username, created_at')
-            .order('created_at', { ascending: false });
-
-          if (!dailySubsError && allDailySubmissions) {
-            const dailySubs = (allDailySubmissions || []).filter(
-              (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
+          if (allPuzzles) {
+            const archivePuzzleIds = new Set(
+              allPuzzles.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id)
             );
 
-            const userSubmissions = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
-            
-            dailySubs.forEach((s: Submission) => {
-              if (!s.anon_id) return;
-              
-              if (!userSubmissions.has(s.anon_id)) {
-                userSubmissions.set(s.anon_id, {
-                  username: s.username || null,
-                  submissions: new Map(),
-                });
-              }
-              
-              const userData = userSubmissions.get(s.anon_id)!;
-              if (!userData.submissions.has(s.puzzle_id)) {
-                userData.submissions.set(s.puzzle_id, s.is_correct);
-              }
-              if (s.username) {
-                userData.username = s.username;
-              }
-            });
+            const dailyPuzzles = allPuzzles.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id));
+            dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
 
-            const streakMap = new Map<string, number>();
-            userSubmissions.forEach((userData, anon_id) => {
-              let currentStreak = 0;
+            const { data: allDailySubmissions } = await supabase
+              .from('submissions')
+              .select('anon_id, puzzle_id, is_correct, username, created_at')
+              .order('created_at', { ascending: false });
+
+            if (allDailySubmissions) {
+              const dailySubs = (allDailySubmissions || []).filter(
+                (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
+              );
+
+              const userSubmissions = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
               
-              for (const puzzle of dailyPuzzles) {
-                const result = userData.submissions.get(puzzle.id);
-                if (result === true) {
-                  currentStreak++;
-                } else if (result === false) {
-                  break;
-                } else {
-                  break;
+              dailySubs.forEach((s: Submission) => {
+                if (!s.anon_id) return;
+                
+                if (!userSubmissions.has(s.anon_id)) {
+                  userSubmissions.set(s.anon_id, {
+                    username: s.username || null,
+                    submissions: new Map(),
+                  });
                 }
-              }
-              
-              streakMap.set(anon_id, currentStreak);
-            });
+                
+                const userData = userSubmissions.get(s.anon_id)!;
+                if (!userData.submissions.has(s.puzzle_id)) {
+                  userData.submissions.set(s.puzzle_id, s.is_correct);
+                }
+                if (s.username) {
+                  userData.username = s.username;
+                }
+              });
 
-            // Fetch guesses for each submission
-            const submissionsWithGuessesAndStreak = await Promise.all(
-              correctSubmissions.map(async (s: Submission) => {
-                // Get all guesses for this submission (same puzzle_id and anon_id)
+              userSubmissions.forEach((userData, anon_id) => {
+                let currentStreak = 0;
+                
+                for (const puzzle of dailyPuzzles) {
+                  const result = userData.submissions.get(puzzle.id);
+                  if (result === true) {
+                    currentStreak++;
+                  } else if (result === false) {
+                    break;
+                  } else {
+                    break;
+                  }
+                }
+                
+                streakMap.set(anon_id, currentStreak);
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error calculating streaks:', error);
+          // Continue without streaks
+        }
+
+        // Fetch guesses for each submission (non-blocking)
+        try {
+          const submissionsWithGuessesAndStreak = await Promise.all(
+            sortedByTime.slice(0, 100).map(async (s: Submission) => {
+              try {
                 const { data: guesses } = await supabase
                   .from('guesses')
                   .select('*')
@@ -145,53 +157,24 @@ function Leaderboard() {
                   guesses: guesses || [],
                   streak: streakMap.get(s.anon_id || '') || 0,
                 };
-              })
-            );
-
-            // Sort by time (fastest first)
-            const sortedByTime = [...submissionsWithGuessesAndStreak].sort((a, b) => a.time_ms - b.time_ms);
-            setSubmissions(sortedByTime.slice(0, 100));
-          } else {
-            // Fallback if streak calculation fails - still fetch guesses
-            const submissionsWithGuesses = await Promise.all(
-              correctSubmissions.map(async (s: Submission) => {
-                const { data: guesses } = await supabase
-                  .from('guesses')
-                  .select('*')
-                  .eq('puzzle_id', puzzleData.id)
-                  .eq('anon_id', s.anon_id)
-                  .order('guess_number', { ascending: true });
-
+              } catch {
                 return {
                   ...s,
-                  guesses: guesses || [],
-                  streak: 0,
+                  guesses: [],
+                  streak: streakMap.get(s.anon_id || '') || 0,
                 };
-              })
-            );
-            const sortedByTime = [...submissionsWithGuesses].sort((a, b) => a.time_ms - b.time_ms);
-            setSubmissions(sortedByTime.slice(0, 100));
-          }
-        } else {
-          // Fallback if puzzle fetch fails - still fetch guesses
-          const submissionsWithGuesses = await Promise.all(
-            correctSubmissions.map(async (s: Submission) => {
-              const { data: guesses } = await supabase
-                .from('guesses')
-                .select('*')
-                .eq('puzzle_id', puzzleData.id)
-                .eq('anon_id', s.anon_id)
-                .order('guess_number', { ascending: true });
-
-              return {
-                ...s,
-                guesses: guesses || [],
-                streak: 0,
-              };
+              }
             })
           );
-          const sortedByTime = [...submissionsWithGuesses].sort((a, b) => a.time_ms - b.time_ms);
-          setSubmissions(sortedByTime.slice(0, 100));
+          setSubmissions(submissionsWithGuessesAndStreak);
+        } catch {
+          // Fallback - just show submissions with streaks, no guesses
+          const submissionsWithDefaults = sortedByTime.slice(0, 100).map((s: Submission) => ({
+            ...s,
+            guesses: [],
+            streak: streakMap.get(s.anon_id || '') || 0,
+          }));
+          setSubmissions(submissionsWithDefaults);
         }
 
         // Get incorrect submissions (ordered by submission time, most recent first)

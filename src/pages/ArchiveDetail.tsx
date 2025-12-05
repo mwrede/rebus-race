@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Puzzle, Submission } from '../types';
 import { getUsername } from '../lib/username';
 import { useTimer } from '../contexts/TimerContext';
+import { savePausedGame, loadPausedGame, clearPausedGame } from '../lib/pausedGame';
 
 function ArchiveDetail() {
   const { id } = useParams<{ id: string }>();
@@ -48,11 +49,26 @@ function ArchiveDetail() {
       loadPuzzle(id);
     }
 
-    // Cleanup: reset timer when component unmounts
+    // Cleanup: save game state if in progress, then reset timer
     return () => {
+      // Save paused game state if game is in progress
+      if (isReady && startTime !== null && !submitted && puzzle && id) {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        savePausedGame({
+          puzzleId: id,
+          isDaily: false,
+          startTime: startTime,
+          pausedAt: Date.now(),
+          timeElapsed: elapsed,
+          wrongGuesses: wrongGuesses,
+          guessCount: guessCount,
+          hintUsed: hintUsed,
+          answer: answer,
+        });
+      }
       setTimerActive(false);
     };
-  }, [id, setTimerActive]);
+  }, [id, setTimerActive, isReady, startTime, submitted, puzzle, wrongGuesses, guessCount, hintUsed, answer]);
 
   useEffect(() => {
     if (isReady && startTime !== null && !submitted) {
@@ -119,6 +135,7 @@ function ArchiveDetail() {
                 setSubmission(data);
                 setSubmitted(true);
                 setTimerActive(false); // Re-enable navigation after timeout
+                clearPausedGame(); // Clear paused game state after timeout
                 // Don't set alreadyPlayed yet - let the result page show first
                 // Load incorrect percentage for timeout
                 await loadIncorrectPercentage(puzzle.id);
@@ -170,6 +187,31 @@ function ArchiveDetail() {
 
       if (error) throw error;
       setPuzzle(data);
+
+      // Check if there's a paused game for this puzzle
+      const pausedGame = loadPausedGame();
+      if (pausedGame && pausedGame.puzzleId === puzzleId && !pausedGame.isDaily) {
+        // Restore paused game state
+        setWrongGuesses(pausedGame.wrongGuesses);
+        setGuessCount(pausedGame.guessCount);
+        setHintUsed(pausedGame.hintUsed);
+        setAnswer(pausedGame.answer);
+        setIsReady(true);
+        setTimerActive(true);
+        
+        // Calculate new startTime based on elapsed time
+        const now = Date.now();
+        const newStartTime = now - (pausedGame.timeElapsed * 1000);
+        setStartTime(newStartTime);
+        setTimeElapsed(pausedGame.timeElapsed);
+        
+        if (pausedGame.hintUsed && data.hint) {
+          setShowHint(true);
+        }
+        
+        setLoading(false);
+        return;
+      }
 
       // Check if user has already played this puzzle
       const anonId = localStorage.getItem('rebus_anon_id');
@@ -271,6 +313,7 @@ function ArchiveDetail() {
         setSubmission(data);
         setSubmitted(true);
         setTimerActive(false); // Re-enable navigation after submission
+        clearPausedGame(); // Clear paused game state after submission
         // Don't set alreadyPlayed yet - let the result page show first
         // It will be set when they come back later
 
@@ -315,6 +358,7 @@ function ArchiveDetail() {
           setSubmission(data);
           setSubmitted(true);
           setTimerActive(false); // Re-enable navigation after submission
+          clearPausedGame(); // Clear paused game state after submission
           // Don't set alreadyPlayed yet - let the result page show first
           // Load incorrect percentage
           await loadIncorrectPercentage(puzzle.id);
