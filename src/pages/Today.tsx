@@ -28,9 +28,10 @@ function Today() {
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
   const [guessCount, setGuessCount] = useState(0);
+  const [hintUsed, setHintUsed] = useState(false);
+  const [showHintWarning, setShowHintWarning] = useState(false);
   const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
-  const MAX_TIME_SECONDS = 300; // 5 minutes
 
   useEffect(() => {
     // Get or create anonymous ID
@@ -44,9 +45,9 @@ function Today() {
     // Load today's puzzle
     loadTodayPuzzle();
 
-    // Cleanup: reset timer when component unmounts
+    // Cleanup: reset timer when component unmounts (but don't clear localStorage)
     return () => {
-      setTimerActive(false);
+      // Don't reset timer active here - let it persist
     };
   }, [setTimerActive]);
 
@@ -56,87 +57,44 @@ function Today() {
         if (startTime) {
           const elapsed = Math.floor((Date.now() - startTime) / 1000);
           setTimeElapsed(elapsed);
-          
-          // Auto-submit when 5 minutes is reached
-          if (elapsed >= MAX_TIME_SECONDS && !submitted && puzzle && !isSubmitting) {
-            clearInterval(timer);
-            const submitTimeout = async () => {
-              setIsSubmitting(true);
-              const timeMs = MAX_TIME_SECONDS * 1000; // 5 minutes in ms
-
-              try {
-                // Save all wrong guesses that were made before timeout
-                const username = getUsername();
-                for (let i = 0; i < wrongGuesses.length; i++) {
-                  await supabase
-                    .from('guesses')
-                    .insert({
-                      puzzle_id: puzzle.id,
-                      anon_id: anonId,
-                      guess: wrongGuesses[i],
-                      is_correct: false,
-                      guess_number: i + 1,
-                      time_ms: timeMs, // Use timeout time for all guesses
-                      username: username || null,
-                    });
-                }
-
-                // Save the final answer (if any) as a guess
-                if (answer.trim()) {
-                  await supabase
-                    .from('guesses')
-                    .insert({
-                      puzzle_id: puzzle.id,
-                      anon_id: anonId,
-                      guess: answer.trim(),
-                      is_correct: false,
-                      guess_number: wrongGuesses.length + 1,
-                      time_ms: timeMs,
-                      username: username || null,
-                    });
-                }
-
-                const { data, error } = await supabase
-                  .from('submissions')
-                  .insert({
-                    puzzle_id: puzzle.id,
-                    anon_id: anonId,
-                    answer: answer.trim() || '',
-                    is_correct: false,
-                    time_ms: timeMs,
-                    username: username || null,
-                    guess_count: MAX_GUESSES,
-                  })
-                  .select()
-                  .single();
-
-                if (error) throw error;
-
-                setSubmission(data);
-                setSubmitted(true);
-                setTimerActive(false); // Re-enable navigation after timeout
-                // Load incorrect percentage for timeout case
-                await loadIncorrectPercentage(puzzle.id);
-                // Load all-time stats even if incorrect
-                await loadAllTimeStats();
-              } catch (error) {
-                console.error('Error submitting answer:', error);
-              } finally {
-                setIsSubmitting(false);
-              }
-            };
-            submitTimeout();
-          }
         }
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [isReady, startTime, submitted, puzzle, isSubmitting, anonId, answer]);
+  }, [isReady, startTime, submitted]);
 
   const handleReady = () => {
+    const now = Date.now();
     setIsReady(true);
-    setStartTime(Date.now());
+    setStartTime(now);
     setTimerActive(true); // Lock in the player - hide nav and prevent navigation
+    
+    // Store timer state in localStorage
+    if (puzzle) {
+      localStorage.setItem('rebus_today_startTime', now.toString());
+      localStorage.setItem('rebus_today_isReady', 'true');
+      localStorage.setItem('rebus_today_puzzleId', puzzle.id);
+    }
+  };
+
+  const handleHintRequest = () => {
+    setShowHintWarning(true);
+  };
+
+  const handleHintConfirm = () => {
+    if (startTime) {
+      // Add 60 seconds by subtracting 60 seconds from startTime
+      const newStartTime = startTime - 60000;
+      setStartTime(newStartTime);
+      setHintUsed(true);
+      // Update localStorage
+      localStorage.setItem('rebus_today_startTime', newStartTime.toString());
+    }
+    setShowHintWarning(false);
+  };
+
+  const handleHintCancel = () => {
+    setShowHintWarning(false);
   };
 
   const loadTodayPuzzle = async () => {
@@ -160,6 +118,27 @@ function Today() {
       if (data) {
         setPuzzle(data);
         
+        // Check if there's an active timer in localStorage for this puzzle
+        const storedStartTime = localStorage.getItem('rebus_today_startTime');
+        const storedIsReady = localStorage.getItem('rebus_today_isReady');
+        const storedPuzzleId = localStorage.getItem('rebus_today_puzzleId');
+        
+        // Only restore timer if puzzle ID matches and it's recent
+        if (storedStartTime && storedIsReady === 'true' && storedPuzzleId === data.id) {
+          const startTimeValue = parseInt(storedStartTime, 10);
+          // Only restore if it's from today (within last 24 hours)
+          if (Date.now() - startTimeValue < 24 * 60 * 60 * 1000) {
+            setStartTime(startTimeValue);
+            setIsReady(true);
+            setTimerActive(true);
+          } else {
+            // Clear old timer data
+            localStorage.removeItem('rebus_today_startTime');
+            localStorage.removeItem('rebus_today_isReady');
+            localStorage.removeItem('rebus_today_puzzleId');
+          }
+        }
+        
         // Check if user has already played today
         const anonId = localStorage.getItem('rebus_anon_id');
         if (anonId) {
@@ -177,6 +156,11 @@ function Today() {
             setPreviousSubmission(existingSubmission);
             setSubmitted(true);
             setSubmission(existingSubmission);
+            
+            // Clear timer from localStorage if returning to already-played puzzle
+            localStorage.removeItem('rebus_today_startTime');
+            localStorage.removeItem('rebus_today_isReady');
+            localStorage.removeItem('rebus_today_puzzleId');
             
             // Load ranking and past results for the previous submission
             if (existingSubmission.is_correct) {
@@ -463,6 +447,11 @@ function Today() {
         setSubmission(data);
         setSubmitted(true);
         setTimerActive(false); // Re-enable navigation after submission
+        
+        // Clear timer from localStorage
+        localStorage.removeItem('rebus_today_startTime');
+        localStorage.removeItem('rebus_today_isReady');
+        localStorage.removeItem('rebus_today_puzzleId');
 
         // Increment win count
         incrementWin(puzzle.id);
@@ -509,6 +498,12 @@ function Today() {
           setSubmission(data);
           setSubmitted(true);
           setTimerActive(false); // Re-enable navigation after submission
+          
+          // Clear timer from localStorage
+          localStorage.removeItem('rebus_today_startTime');
+          localStorage.removeItem('rebus_today_isReady');
+          localStorage.removeItem('rebus_today_puzzleId');
+          
           // Load incorrect percentage
           await loadIncorrectPercentage(puzzle.id);
           // Load all-time stats even if incorrect
@@ -583,26 +578,17 @@ function Today() {
           ) : (
             <>
               <div className="text-center mb-1 sm:mb-1.5">
-                <div className={`text-lg sm:text-xl md:text-2xl font-bold mb-0.5 ${
-                  timeElapsed >= MAX_TIME_SECONDS ? 'text-red-600' : 'text-blue-600'
-                }`}>
+                <div className="text-lg sm:text-xl md:text-2xl font-bold mb-0.5 text-blue-600">
                   {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}
                 </div>
                 <div className="text-[8px] sm:text-[9px] text-gray-600">
-                  {timeElapsed >= MAX_TIME_SECONDS ? "Time's up!" : 'Time elapsed'}
+                  Time elapsed
                 </div>
                 <div className="text-[8px] sm:text-[9px] text-gray-600 mt-0.5">
                   {MAX_GUESSES - guessCount} {MAX_GUESSES - guessCount === 1 ? 'guess' : 'guesses'} remaining
                 </div>
               </div>
 
-              {timeElapsed >= MAX_TIME_SECONDS && (
-                <div className="mb-2 p-2 bg-red-50 border-2 border-red-300 rounded-lg">
-                  <p className="text-xs sm:text-sm text-red-800 font-semibold text-center">
-                    Incorrect, you wont get it i promise
-                  </p>
-                </div>
-              )}
 
               {wrongGuesses.length > 0 && (
                 <div className="mb-2 p-2 bg-gray-50 border border-gray-200 rounded-lg">
@@ -618,6 +604,45 @@ function Today() {
                         {guess}
                       </span>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {guessCount >= 4 && !hintUsed && (
+                <div className="mb-2 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={handleHintRequest}
+                    className="bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-lg hover:bg-purple-700 font-semibold text-xs sm:text-sm shadow-md"
+                  >
+                    💡 Get Hint
+                  </button>
+                </div>
+              )}
+
+              {showHintWarning && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 max-w-md w-full">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 sm:mb-3">
+                      Warning: Hint Penalty
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-700 mb-4">
+                      Using a hint will add <span className="font-bold text-red-600">+1 minute</span> to your timer. Are you sure you want to continue?
+                    </p>
+                    <div className="flex gap-3 justify-end">
+                      <button
+                        onClick={handleHintCancel}
+                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium text-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleHintConfirm}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm"
+                      >
+                        Use Hint
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -643,7 +668,7 @@ function Today() {
                     id="answer"
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
-                    disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES}
+                    disabled={submitted || guessCount >= MAX_GUESSES}
                     className="w-full px-2 py-1 text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                     placeholder="Enter your answer..."
                     autoFocus
@@ -652,7 +677,7 @@ function Today() {
                 </div>
                 <button
                   type="submit"
-                  disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES || !answer.trim() || isSubmitting}
+                  disabled={submitted || guessCount >= MAX_GUESSES || !answer.trim() || isSubmitting}
                   className="w-full bg-blue-600 text-white py-1.5 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Answer'}

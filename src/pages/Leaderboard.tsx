@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Puzzle, Submission } from '../types';
+import { Puzzle, Submission, Guess } from '../types';
 
 interface AllTimeEntry {
   username: string | null;
@@ -11,9 +11,14 @@ interface AllTimeEntry {
   streak: number;
 }
 
+interface SubmissionWithGuesses extends Submission {
+  guesses: Guess[];
+  streak: number;
+}
+
 function Leaderboard() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionWithGuesses[]>([]);
   const [incorrectSubmissions, setIncorrectSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [averageTime, setAverageTime] = useState<number | null>(null);
@@ -124,23 +129,68 @@ function Leaderboard() {
               streakMap.set(anon_id, currentStreak);
             });
 
-            // Add streak to each submission
-            const submissionsWithStreak = correctSubmissions.map((s: Submission) => ({
-              ...s,
-              streak: streakMap.get(s.anon_id || '') || 0,
-            }));
+            // Fetch guesses for each submission
+            const submissionsWithGuessesAndStreak = await Promise.all(
+              correctSubmissions.map(async (s: Submission) => {
+                // Get all guesses for this submission (same puzzle_id and anon_id)
+                const { data: guesses, error: guessesError } = await supabase
+                  .from('guesses')
+                  .select('*')
+                  .eq('puzzle_id', puzzleData.id)
+                  .eq('anon_id', s.anon_id)
+                  .order('guess_number', { ascending: true });
+
+                return {
+                  ...s,
+                  guesses: guesses || [],
+                  streak: streakMap.get(s.anon_id || '') || 0,
+                };
+              })
+            );
 
             // Sort by time (fastest first)
-            const sortedByTime = [...submissionsWithStreak].sort((a: Submission & { streak: number }, b: Submission & { streak: number }) => a.time_ms - b.time_ms);
-            setSubmissions(sortedByTime.slice(0, 100) as Submission[]);
+            const sortedByTime = [...submissionsWithGuessesAndStreak].sort((a, b) => a.time_ms - b.time_ms);
+            setSubmissions(sortedByTime.slice(0, 100));
           } else {
-            // Fallback if streak calculation fails
-            const sortedByTime = [...correctSubmissions].sort((a: Submission, b: Submission) => a.time_ms - b.time_ms);
+            // Fallback if streak calculation fails - still fetch guesses
+            const submissionsWithGuesses = await Promise.all(
+              correctSubmissions.map(async (s: Submission) => {
+                const { data: guesses } = await supabase
+                  .from('guesses')
+                  .select('*')
+                  .eq('puzzle_id', puzzleData.id)
+                  .eq('anon_id', s.anon_id)
+                  .order('guess_number', { ascending: true });
+
+                return {
+                  ...s,
+                  guesses: guesses || [],
+                  streak: 0,
+                };
+              })
+            );
+            const sortedByTime = [...submissionsWithGuesses].sort((a, b) => a.time_ms - b.time_ms);
             setSubmissions(sortedByTime.slice(0, 100));
           }
         } else {
-          // Fallback if puzzle fetch fails
-          const sortedByTime = [...correctSubmissions].sort((a: Submission, b: Submission) => a.time_ms - b.time_ms);
+          // Fallback if puzzle fetch fails - still fetch guesses
+          const submissionsWithGuesses = await Promise.all(
+            correctSubmissions.map(async (s: Submission) => {
+              const { data: guesses } = await supabase
+                .from('guesses')
+                .select('*')
+                .eq('puzzle_id', puzzleData.id)
+                .eq('anon_id', s.anon_id)
+                .order('guess_number', { ascending: true });
+
+              return {
+                ...s,
+                guesses: guesses || [],
+                streak: 0,
+              };
+            })
+          );
+          const sortedByTime = [...submissionsWithGuesses].sort((a, b) => a.time_ms - b.time_ms);
           setSubmissions(sortedByTime.slice(0, 100));
         }
 
@@ -395,6 +445,12 @@ function Leaderboard() {
                       <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Guesses
                       </th>
+                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Streak
+                      </th>
+                      <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Answers
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -430,6 +486,24 @@ function Leaderboard() {
                             {submission.guess_count || '—'}
                           </span>
                         </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
+                          <span className="text-[10px] sm:text-xs md:text-sm text-orange-600 font-semibold">
+                            {submission.streak > 0 ? `🔥 ${submission.streak}` : '—'}
+                          </span>
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
+                          {submission.guesses && submission.guesses.length > 0 ? (
+                            <ul className="list-disc list-inside text-[9px] sm:text-[10px] text-gray-700 space-y-0.5">
+                              {submission.guesses.map((guess, idx) => (
+                                <li key={guess.id} className={guess.is_correct ? 'text-green-600 font-semibold' : 'text-gray-600'}>
+                                  {guess.guess}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <span className="text-[10px] sm:text-xs text-gray-500">—</span>
+                          )}
+                        </td>
                       </tr>
                       );
                     })}
@@ -459,6 +533,14 @@ function Leaderboard() {
                           <span className="text-[10px] sm:text-xs md:text-sm text-red-600 font-semibold">
                             —
                           </span>
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
+                          <span className="text-[10px] sm:text-xs md:text-sm text-red-600 font-semibold">
+                            —
+                          </span>
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4">
+                          <span className="text-[10px] sm:text-xs text-red-500">—</span>
                         </td>
                       </tr>
                       );
