@@ -25,6 +25,7 @@ function ArchiveDetail() {
   const [guessCount, setGuessCount] = useState(0);
   const [showHintConfirmation, setShowHintConfirmation] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
+  const [pausedElapsedTime, setPausedElapsedTime] = useState<number | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [incorrectCount, setIncorrectCount] = useState<number>(0);
@@ -48,11 +49,26 @@ function ArchiveDetail() {
       loadPuzzle(id);
     }
 
-    // Cleanup: reset timer when component unmounts
+    // Save game state before unmounting
     return () => {
+      if (puzzle && isReady && !submitted && startTime !== null) {
+        const gameStateKey = `rebus_game_state_${puzzle.id}`;
+        const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
+        const gameState = {
+          puzzleId: puzzle.id,
+          elapsedTime: currentElapsed,
+          wrongGuesses,
+          guessCount,
+          hintUsed,
+          answer,
+          isReady: true,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(gameStateKey, JSON.stringify(gameState));
+      }
       setTimerActive(false);
     };
-  }, [id, setTimerActive]);
+  }, [id, setTimerActive, puzzle, isReady, submitted, startTime, wrongGuesses, guessCount, hintUsed, answer]);
 
   useEffect(() => {
     if (isReady && startTime !== null && !submitted) {
@@ -119,6 +135,7 @@ function ArchiveDetail() {
                 setSubmission(data);
                 setSubmitted(true);
                 setTimerActive(false); // Re-enable navigation after timeout
+                clearGameState(); // Clear saved game state after timeout
                 // Don't set alreadyPlayed yet - let the result page show first
                 // Load incorrect percentage for timeout
                 await loadIncorrectPercentage(puzzle.id);
@@ -135,6 +152,25 @@ function ArchiveDetail() {
       return () => clearInterval(timer);
     }
   }, [isReady, startTime, submitted, puzzle, isSubmitting, anonId, answer]);
+
+  // Save game state whenever relevant state changes
+  useEffect(() => {
+    if (puzzle && isReady && !submitted && startTime !== null) {
+      const gameStateKey = `rebus_game_state_${puzzle.id}`;
+      const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
+      const gameState = {
+        puzzleId: puzzle.id,
+        elapsedTime: currentElapsed,
+        wrongGuesses,
+        guessCount,
+        hintUsed,
+        answer,
+        isReady: true,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(gameStateKey, JSON.stringify(gameState));
+    }
+  }, [puzzle, isReady, submitted, startTime, wrongGuesses, guessCount, hintUsed, answer]);
 
   const handleReady = () => {
     setIsReady(true);
@@ -157,6 +193,41 @@ function ArchiveDetail() {
 
   const handleHintCancel = () => {
     setShowHintConfirmation(false);
+  };
+
+  // Load game state from localStorage
+  const loadGameState = (puzzleId: string): boolean => {
+    try {
+      const gameStateKey = `rebus_game_state_${puzzleId}`;
+      const savedState = localStorage.getItem(gameStateKey);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        // Only restore if it's for the same puzzle
+        if (state.puzzleId === puzzleId && state.isReady) {
+          setPausedElapsedTime(state.elapsedTime);
+          setWrongGuesses(state.wrongGuesses || []);
+          setGuessCount(state.guessCount || 0);
+          setHintUsed(state.hintUsed || false);
+          setAnswer(state.answer || '');
+          setIsReady(true);
+          // Calculate new startTime based on paused elapsed time
+          setStartTime(Date.now() - (state.elapsedTime * 1000));
+          setTimerActive(true);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading game state:', error);
+    }
+    return false;
+  };
+
+  // Clear game state from localStorage
+  const clearGameState = () => {
+    if (puzzle) {
+      const gameStateKey = `rebus_game_state_${puzzle.id}`;
+      localStorage.removeItem(gameStateKey);
+    }
   };
 
   const loadPuzzle = async (puzzleId: string) => {
@@ -187,6 +258,7 @@ function ArchiveDetail() {
           setPreviousSubmission(existingSubmission);
           setSubmitted(true);
           setSubmission(existingSubmission);
+          clearGameState(); // Clear any saved game state since they already played
           // Load ranking if they got it correct
           if (existingSubmission.is_correct) {
             await loadRankingAndPastResults(puzzleId, existingSubmission.id, existingSubmission.time_ms);
@@ -194,7 +266,13 @@ function ArchiveDetail() {
             // Load incorrect percentage if they got it wrong
             await loadIncorrectPercentage(puzzleId);
           }
+        } else {
+          // Try to restore saved game state
+          loadGameState(puzzleId);
         }
+      } else {
+        // Try to restore saved game state
+        loadGameState(puzzleId);
       }
     } catch (error) {
       console.error('Error loading puzzle:', error);
@@ -270,6 +348,7 @@ function ArchiveDetail() {
         setSubmission(data);
         setSubmitted(true);
         setTimerActive(false); // Re-enable navigation after submission
+        clearGameState(); // Clear saved game state after submission
         // Don't set alreadyPlayed yet - let the result page show first
         // It will be set when they come back later
 
@@ -314,6 +393,7 @@ function ArchiveDetail() {
           setSubmission(data);
           setSubmitted(true);
           setTimerActive(false); // Re-enable navigation after submission
+          clearGameState(); // Clear saved game state after submission
           // Don't set alreadyPlayed yet - let the result page show first
           // Load incorrect percentage
           await loadIncorrectPercentage(puzzle.id);

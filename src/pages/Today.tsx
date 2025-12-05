@@ -30,10 +30,12 @@ function Today() {
   const [guessCount, setGuessCount] = useState(0);
   const [showHintConfirmation, setShowHintConfirmation] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
+  const [pausedElapsedTime, setPausedElapsedTime] = useState<number | null>(null);
   const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
   const HINT_PENALTY_SECONDS = 60; // 1 minute penalty for using hint
+  const GAME_STATE_KEY = 'rebus_game_state_today';
 
   useEffect(() => {
     // Get or create anonymous ID
@@ -47,11 +49,30 @@ function Today() {
     // Load today's puzzle
     loadTodayPuzzle();
 
-    // Cleanup: reset timer when component unmounts
+    // Save game state before unmounting
     return () => {
+      saveGameState();
       setTimerActive(false);
     };
   }, [setTimerActive]);
+
+  // Save game state whenever relevant state changes
+  useEffect(() => {
+    if (puzzle && isReady && !submitted && startTime !== null) {
+      const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
+      const gameState = {
+        puzzleId: puzzle.id,
+        elapsedTime: currentElapsed,
+        wrongGuesses,
+        guessCount,
+        hintUsed,
+        answer,
+        isReady: true,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
+    }
+  }, [puzzle, isReady, submitted, startTime, wrongGuesses, guessCount, hintUsed, answer]);
 
   useEffect(() => {
     if (isReady && startTime !== null && !submitted) {
@@ -118,6 +139,7 @@ function Today() {
                 setSubmission(data);
                 setSubmitted(true);
                 setTimerActive(false); // Re-enable navigation after timeout
+                clearGameState(); // Clear saved game state after timeout
                 // Load incorrect percentage for timeout case
                 await loadIncorrectPercentage(puzzle.id);
                 // Load all-time stats even if incorrect
@@ -159,6 +181,55 @@ function Today() {
     setShowHintConfirmation(false);
   };
 
+  // Save game state to localStorage
+  const saveGameState = () => {
+    if (puzzle && isReady && !submitted && startTime !== null) {
+      const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
+      const gameState = {
+        puzzleId: puzzle.id,
+        elapsedTime: currentElapsed,
+        wrongGuesses,
+        guessCount,
+        hintUsed,
+        answer,
+        isReady: true,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
+    }
+  };
+
+  // Load game state from localStorage
+  const loadGameState = (puzzleId: string): boolean => {
+    try {
+      const savedState = localStorage.getItem(GAME_STATE_KEY);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        // Only restore if it's for the same puzzle
+        if (state.puzzleId === puzzleId && state.isReady) {
+          setPausedElapsedTime(state.elapsedTime);
+          setWrongGuesses(state.wrongGuesses || []);
+          setGuessCount(state.guessCount || 0);
+          setHintUsed(state.hintUsed || false);
+          setAnswer(state.answer || '');
+          setIsReady(true);
+          // Calculate new startTime based on paused elapsed time
+          setStartTime(Date.now() - (state.elapsedTime * 1000));
+          setTimerActive(true);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading game state:', error);
+    }
+    return false;
+  };
+
+  // Clear game state from localStorage
+  const clearGameState = () => {
+    localStorage.removeItem(GAME_STATE_KEY);
+  };
+
   const loadTodayPuzzle = async () => {
     try {
       // Get today's date in local timezone (YYYY-MM-DD format)
@@ -197,6 +268,7 @@ function Today() {
             setPreviousSubmission(existingSubmission);
             setSubmitted(true);
             setSubmission(existingSubmission);
+            clearGameState(); // Clear any saved game state since they already played
             
             // Load ranking and past results for the previous submission
             if (existingSubmission.is_correct) {
@@ -212,12 +284,20 @@ function Today() {
               await loadAllTimeStats();
             }
           } else {
+            // Try to restore saved game state
+            const restored = loadGameState(data.id);
+            if (!restored) {
+              // Don't start timer yet - wait for user to click "ready"
+              setIsReady(false);
+            }
+          }
+        } else {
+          // Try to restore saved game state
+          const restored = loadGameState(data.id);
+          if (!restored) {
             // Don't start timer yet - wait for user to click "ready"
             setIsReady(false);
           }
-        } else {
-          // Don't start timer yet - wait for user to click "ready"
-          setIsReady(false);
         }
       } else {
         // No puzzle for today
@@ -483,6 +563,7 @@ function Today() {
         setSubmission(data);
         setSubmitted(true);
         setTimerActive(false); // Re-enable navigation after submission
+        clearGameState(); // Clear saved game state after submission
 
         // Increment win count
         incrementWin(puzzle.id);
@@ -529,6 +610,7 @@ function Today() {
           setSubmission(data);
           setSubmitted(true);
           setTimerActive(false); // Re-enable navigation after submission
+          clearGameState(); // Clear saved game state after submission
           // Load incorrect percentage
           await loadIncorrectPercentage(puzzle.id);
           // Load all-time stats even if incorrect
