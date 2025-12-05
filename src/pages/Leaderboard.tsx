@@ -34,7 +34,14 @@ function Leaderboard() {
   const loadLeaderboard = async () => {
     try {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in local timezone (YYYY-MM-DD format) - same as Today.tsx
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
+      
+      console.log('Leaderboard: Looking for puzzle with date:', today);
       
       // Get today's puzzle
       const { data: puzzleData, error: puzzleError } = await supabase
@@ -49,6 +56,7 @@ function Leaderboard() {
       }
 
       if (puzzleData) {
+        console.log('Leaderboard: Found puzzle:', puzzleData.id, puzzleData.date);
         setPuzzle(puzzleData);
 
         // Get all submissions for today's puzzle (both correct and incorrect)
@@ -110,8 +118,12 @@ function Leaderboard() {
   const loadAllTimeLeaderboard = async () => {
     try {
       setLoadingAllTime(true);
-      // Get today's date to filter out archive puzzles for streak calculation
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in local timezone (YYYY-MM-DD format) - same as Today.tsx
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
 
       // Get all puzzles to check which are archive (date < today) for streak calculation
       const { data: puzzles, error: puzzlesError } = await supabase
