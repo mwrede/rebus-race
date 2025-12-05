@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Puzzle } from '../types';
-import { hasPausedGame } from '../lib/pausedGame';
 
 interface PuzzleWithStats extends Puzzle {
   successRate: number | null;
@@ -232,11 +231,10 @@ function Archive() {
 
                         // Check if this is a Julia puzzle (vegemite, adventure, rugby)
                         const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
-                        const isPaused = hasPausedGame(puzzle.id);
                         
                         // Get gradient color based on success rate (or purple for Julia puzzles)
                         const difficultyColor = isJuliaPuzzle ? 'rgb(147, 51, 234)' : getDifficultyColor(puzzle.successRate); // purple-600
-                        const borderColor = isJuliaPuzzle ? 'border-purple-500' : (isPaused ? 'border-yellow-500' : 'border-gray-300');
+                        const borderColor = isJuliaPuzzle ? 'border-purple-500' : 'border-gray-300';
 
                         return (
                           <Link
@@ -246,23 +244,16 @@ function Archive() {
                             style={{
                               backgroundColor: isJuliaPuzzle 
                                 ? 'rgba(147, 51, 234, 0.15)' // purple background
-                                : (isPaused 
-                                  ? 'rgba(234, 179, 8, 0.15)' // yellow background for paused
-                                  : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`),
+                                : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`,
                             }}
                           >
-                            <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
-                              {isJuliaPuzzle && (
+                            {isJuliaPuzzle && (
+                              <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
                                 <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
                                   julia
                                 </span>
-                              )}
-                              {isPaused && (
-                                <span className="text-[9px] sm:text-[10px] font-semibold text-yellow-700 bg-yellow-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                  ⏸ Paused
-                                </span>
-                              )}
-                            </div>
+                              </div>
+                            )}
                             <div className="text-center">
                               <div className="text-sm sm:text-base font-semibold mb-2 text-gray-900">
                                 {dateStr}
@@ -330,13 +321,12 @@ function Archive() {
 
                           // Check if this is a Julia puzzle (vegemite, adventure, rugby)
                           const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
-                          const isPaused = hasPausedGame(puzzle.id);
                           
                           // Get gradient color based on success rate (or purple for Julia puzzles)
                           const difficultyColor = isJuliaPuzzle ? 'rgb(147, 51, 234)' : getDifficultyColor(puzzle.successRate); // purple-600
                           const borderColor = isPlayed 
                             ? (isJuliaPuzzle ? 'border-purple-400' : 'border-gray-400')
-                            : (isPaused ? 'border-yellow-500' : (isJuliaPuzzle ? 'border-purple-500' : 'border-gray-300'));
+                            : (isJuliaPuzzle ? 'border-purple-500' : 'border-gray-300');
 
                           return (
                             <Link
@@ -348,9 +338,7 @@ function Archive() {
                               style={{
                                 backgroundColor: isPlayed 
                                   ? (isJuliaPuzzle ? 'rgba(147, 51, 234, 0.1)' : 'rgba(156, 163, 175, 0.1)') // purple or grey background for already played
-                                  : (isPaused 
-                                    ? 'rgba(234, 179, 8, 0.15)' // yellow background for paused
-                                    : (isJuliaPuzzle ? 'rgba(147, 51, 234, 0.15)' : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`)),
+                                  : (isJuliaPuzzle ? 'rgba(147, 51, 234, 0.15)' : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`),
                               }}
                             >
                               <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
@@ -362,11 +350,6 @@ function Archive() {
                                 {isJuliaPuzzle && (
                                   <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
                                     julia
-                                  </span>
-                                )}
-                                {!isPlayed && isPaused && (
-                                  <span className="text-[9px] sm:text-[10px] font-semibold text-yellow-700 bg-yellow-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                    ⏸ Paused
                                   </span>
                                 )}
                               </div>
