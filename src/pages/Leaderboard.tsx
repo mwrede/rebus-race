@@ -110,10 +110,10 @@ function Leaderboard() {
   const loadAllTimeLeaderboard = async () => {
     try {
       setLoadingAllTime(true);
-      // Get today's date to filter out archive puzzles
+      // Get today's date to filter out archive puzzles for streak calculation
       const today = new Date().toISOString().split('T')[0];
 
-      // Get all puzzles to check which are archive (date < today)
+      // Get all puzzles to check which are archive (date < today) for streak calculation
       const { data: puzzles, error: puzzlesError } = await supabase
         .from('puzzles')
         .select('id, date');
@@ -131,7 +131,7 @@ function Leaderboard() {
 
       console.log('Archive puzzle IDs:', archivePuzzleIds.size);
 
-      // Get all correct submissions, excluding archive puzzles
+      // Get ALL correct submissions (including archive puzzles for all-time leaderboard)
       const { data: submissions, error } = await supabase
         .from('submissions')
         .select('*')
@@ -145,17 +145,15 @@ function Leaderboard() {
 
       console.log('Total correct submissions:', submissions?.length || 0);
 
-      // Filter out submissions from archive puzzles
-      const dailySubmissions = submissions?.filter(
-        (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
-      ) || [];
+      // Use ALL submissions for all-time leaderboard (don't filter out archive puzzles)
+      const allTimeSubmissions = submissions || [];
 
-      console.log('Daily submissions (non-archive):', dailySubmissions.length);
+      console.log('All submissions for all-time leaderboard:', allTimeSubmissions.length);
 
       // Group by anon_id and calculate stats
       const userStats = new Map<string, { username: string | null; times: number[]; guesses: number[]; puzzles: Set<string> }>();
 
-      dailySubmissions.forEach((submission: Submission) => {
+      allTimeSubmissions.forEach((submission: Submission) => {
         if (!submission.anon_id) {
           console.warn('Submission without anon_id:', submission.id);
           return;
