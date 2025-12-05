@@ -36,27 +36,8 @@ function Today() {
   const HINT_PENALTY_SECONDS = 60; // 1 minute penalty for using hint
   const GAME_STATE_KEY = 'rebus_game_state_today';
 
-  useEffect(() => {
-    // Get or create anonymous ID
-    let id = localStorage.getItem('rebus_anon_id');
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem('rebus_anon_id', id);
-    }
-    setAnonId(id);
-
-    // Load today's puzzle
-    loadTodayPuzzle();
-
-    // Save game state before unmounting
-    return () => {
-      saveGameState();
-      setTimerActive(false);
-    };
-  }, [setTimerActive]);
-
-  // Save game state whenever relevant state changes
-  useEffect(() => {
+  // Save game state to localStorage
+  const saveGameState = () => {
     if (puzzle && isReady && !submitted && startTime !== null) {
       const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
       const gameState = {
@@ -70,6 +51,70 @@ function Today() {
         timestamp: Date.now(),
       };
       localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
+    }
+  };
+
+  // Load game state from localStorage
+  const loadGameState = (puzzleId: string): boolean => {
+    try {
+      const savedState = localStorage.getItem(GAME_STATE_KEY);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        // Only restore if it's for the same puzzle and not too old (within 24 hours)
+        const hoursSinceSave = (Date.now() - state.timestamp) / (1000 * 60 * 60);
+        if (state.puzzleId === puzzleId && state.isReady && hoursSinceSave < 24) {
+          setWrongGuesses(state.wrongGuesses || []);
+          setGuessCount(state.guessCount || 0);
+          setHintUsed(state.hintUsed || false);
+          setAnswer(state.answer || '');
+          setIsReady(true);
+          // Calculate new startTime based on saved elapsed time
+          setStartTime(Date.now() - (state.elapsedTime * 1000));
+          setTimerActive(true);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading game state:', error);
+    }
+    return false;
+  };
+
+  // Clear game state from localStorage
+  const clearGameState = () => {
+    localStorage.removeItem(GAME_STATE_KEY);
+  };
+
+  useEffect(() => {
+    // Get or create anonymous ID
+    let id = localStorage.getItem('rebus_anon_id');
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem('rebus_anon_id', id);
+    }
+    setAnonId(id);
+
+    // Load today's puzzle
+    loadTodayPuzzle();
+
+    // Save game state before page unload (refresh/close)
+    const handleBeforeUnload = () => {
+      saveGameState();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cleanup: save game state and reset timer when component unmounts
+    return () => {
+      saveGameState();
+      setTimerActive(false);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [setTimerActive]);
+
+  // Save game state whenever relevant state changes
+  useEffect(() => {
+    if (puzzle && isReady && !submitted && startTime !== null) {
+      saveGameState();
     }
   }, [puzzle, isReady, submitted, startTime, wrongGuesses, guessCount, hintUsed, answer]);
 
@@ -178,54 +223,6 @@ function Today() {
 
   const handleHintCancel = () => {
     setShowHintConfirmation(false);
-  };
-
-  // Save game state to localStorage
-  const saveGameState = () => {
-    if (puzzle && isReady && !submitted && startTime !== null) {
-      const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
-      const gameState = {
-        puzzleId: puzzle.id,
-        elapsedTime: currentElapsed,
-        wrongGuesses,
-        guessCount,
-        hintUsed,
-        answer,
-        isReady: true,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
-    }
-  };
-
-  // Load game state from localStorage
-  const loadGameState = (puzzleId: string): boolean => {
-    try {
-      const savedState = localStorage.getItem(GAME_STATE_KEY);
-      if (savedState) {
-        const state = JSON.parse(savedState);
-        // Only restore if it's for the same puzzle
-        if (state.puzzleId === puzzleId && state.isReady) {
-          setWrongGuesses(state.wrongGuesses || []);
-          setGuessCount(state.guessCount || 0);
-          setHintUsed(state.hintUsed || false);
-          setAnswer(state.answer || '');
-          setIsReady(true);
-          // Calculate new startTime based on paused elapsed time
-          setStartTime(Date.now() - (state.elapsedTime * 1000));
-          setTimerActive(true);
-          return true;
-        }
-      }
-    } catch (error) {
-      console.error('Error loading game state:', error);
-    }
-    return false;
-  };
-
-  // Clear game state from localStorage
-  const clearGameState = () => {
-    localStorage.removeItem(GAME_STATE_KEY);
   };
 
   const loadTodayPuzzle = async () => {

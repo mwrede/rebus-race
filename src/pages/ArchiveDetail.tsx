@@ -34,6 +34,60 @@ function ArchiveDetail() {
   const MAX_TIME_SECONDS = 300; // 5 minutes
   const HINT_PENALTY_SECONDS = 60; // 1 minute penalty for using hint
 
+  // Save game state to localStorage
+  const saveGameState = () => {
+    if (puzzle && isReady && !submitted && startTime !== null) {
+      const gameStateKey = `rebus_game_state_${puzzle.id}`;
+      const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
+      const gameState = {
+        puzzleId: puzzle.id,
+        elapsedTime: currentElapsed,
+        wrongGuesses,
+        guessCount,
+        hintUsed,
+        answer,
+        isReady: true,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(gameStateKey, JSON.stringify(gameState));
+    }
+  };
+
+  // Load game state from localStorage
+  const loadGameState = (puzzleId: string): boolean => {
+    try {
+      const gameStateKey = `rebus_game_state_${puzzleId}`;
+      const savedState = localStorage.getItem(gameStateKey);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        // Only restore if it's for the same puzzle and not too old (within 24 hours)
+        const hoursSinceSave = (Date.now() - state.timestamp) / (1000 * 60 * 60);
+        if (state.puzzleId === puzzleId && state.isReady && hoursSinceSave < 24) {
+          setWrongGuesses(state.wrongGuesses || []);
+          setGuessCount(state.guessCount || 0);
+          setHintUsed(state.hintUsed || false);
+          setAnswer(state.answer || '');
+          setIsReady(true);
+          // Calculate new startTime based on saved elapsed time
+          setStartTime(Date.now() - (state.elapsedTime * 1000));
+          setTimerActive(true);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading game state:', error);
+    }
+    return false;
+  };
+
+  // Clear game state from localStorage
+  const clearGameState = () => {
+    if (puzzle) {
+      const gameStateKey = `rebus_game_state_${puzzle.id}`;
+      localStorage.removeItem(gameStateKey);
+    }
+  };
+
   useEffect(() => {
     // Get or create anonymous ID
     let anonIdValue = localStorage.getItem('rebus_anon_id');
@@ -48,26 +102,26 @@ function ArchiveDetail() {
       loadPuzzle(id);
     }
 
-    // Save game state before unmounting
-    return () => {
-      if (puzzle && isReady && !submitted && startTime !== null) {
-        const gameStateKey = `rebus_game_state_${puzzle.id}`;
-        const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
-        const gameState = {
-          puzzleId: puzzle.id,
-          elapsedTime: currentElapsed,
-          wrongGuesses,
-          guessCount,
-          hintUsed,
-          answer,
-          isReady: true,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem(gameStateKey, JSON.stringify(gameState));
-      }
-      setTimerActive(false);
+    // Save game state before page unload (refresh/close)
+    const handleBeforeUnload = () => {
+      saveGameState();
     };
-  }, [id, setTimerActive, puzzle, isReady, submitted, startTime, wrongGuesses, guessCount, hintUsed, answer]);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cleanup: save game state and reset timer when component unmounts
+    return () => {
+      saveGameState();
+      setTimerActive(false);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [id, setTimerActive]);
+
+  // Save game state whenever relevant state changes
+  useEffect(() => {
+    if (puzzle && isReady && !submitted && startTime !== null) {
+      saveGameState();
+    }
+  }, [puzzle, isReady, submitted, startTime, wrongGuesses, guessCount, hintUsed, answer]);
 
   useEffect(() => {
     if (isReady && startTime !== null && !submitted) {
@@ -152,25 +206,6 @@ function ArchiveDetail() {
     }
   }, [isReady, startTime, submitted, puzzle, isSubmitting, anonId, answer]);
 
-  // Save game state whenever relevant state changes
-  useEffect(() => {
-    if (puzzle && isReady && !submitted && startTime !== null) {
-      const gameStateKey = `rebus_game_state_${puzzle.id}`;
-      const currentElapsed = Math.floor((Date.now() - startTime) / 1000);
-      const gameState = {
-        puzzleId: puzzle.id,
-        elapsedTime: currentElapsed,
-        wrongGuesses,
-        guessCount,
-        hintUsed,
-        answer,
-        isReady: true,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(gameStateKey, JSON.stringify(gameState));
-    }
-  }, [puzzle, isReady, submitted, startTime, wrongGuesses, guessCount, hintUsed, answer]);
-
   const handleReady = () => {
     setIsReady(true);
     setStartTime(Date.now());
@@ -192,40 +227,6 @@ function ArchiveDetail() {
 
   const handleHintCancel = () => {
     setShowHintConfirmation(false);
-  };
-
-  // Load game state from localStorage
-  const loadGameState = (puzzleId: string): boolean => {
-    try {
-      const gameStateKey = `rebus_game_state_${puzzleId}`;
-      const savedState = localStorage.getItem(gameStateKey);
-      if (savedState) {
-        const state = JSON.parse(savedState);
-        // Only restore if it's for the same puzzle
-        if (state.puzzleId === puzzleId && state.isReady) {
-          setWrongGuesses(state.wrongGuesses || []);
-          setGuessCount(state.guessCount || 0);
-          setHintUsed(state.hintUsed || false);
-          setAnswer(state.answer || '');
-          setIsReady(true);
-          // Calculate new startTime based on paused elapsed time
-          setStartTime(Date.now() - (state.elapsedTime * 1000));
-          setTimerActive(true);
-          return true;
-        }
-      }
-    } catch (error) {
-      console.error('Error loading game state:', error);
-    }
-    return false;
-  };
-
-  // Clear game state from localStorage
-  const clearGameState = () => {
-    if (puzzle) {
-      const gameStateKey = `rebus_game_state_${puzzle.id}`;
-      localStorage.removeItem(gameStateKey);
-    }
   };
 
   const loadPuzzle = async (puzzleId: string) => {
@@ -268,9 +269,6 @@ function ArchiveDetail() {
           // Try to restore saved game state
           loadGameState(puzzleId);
         }
-      } else {
-        // Try to restore saved game state
-        loadGameState(puzzleId);
       }
     } catch (error) {
       console.error('Error loading puzzle:', error);
