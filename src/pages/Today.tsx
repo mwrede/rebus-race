@@ -839,7 +839,7 @@ function Today() {
                   A rebus puzzle is a centuries old tradition dating back to the.... <span className="italic">WHO CARES</span>... it's images put together meant to be a bit of a riddle.
                 </p>
                 <p>
-                  It's tricky, and created hand made by me, <span className="font-semibold text-amber-800">michael wrede</span>, so may the best rebus puzzler win!
+                  It's tricky, and created by hand by me, <span className="font-semibold text-amber-800">michael wrede</span>, so may the best rebus puzzler win!
                 </p>
                 <p>
                   Send me a message at{' '}
