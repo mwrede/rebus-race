@@ -310,7 +310,7 @@ function Archive() {
                                 </div>
                                 <div className="space-y-0.5 mb-1">
                                   <div className="text-[10px] sm:text-xs font-medium text-gray-700">
-                                    {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'player' : 'players'}
+                                    {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'play' : 'plays'}
                                   </div>
                                   {puzzle.averageGuesses !== null && (
                                     <div className="text-[10px] sm:text-xs font-medium text-gray-600">
@@ -422,7 +422,7 @@ function Archive() {
                                   </div>
                                   <div className="space-y-0.5 mb-1">
                                     <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-700'}`}>
-                                      {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'player' : 'players'}
+                                      {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'play' : 'plays'}
                                     </div>
                                     {puzzle.averageGuesses !== null && (
                                       <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
