@@ -761,7 +761,7 @@ function ArchiveDetail() {
                   to="/archive"
                   className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
                 >
-                  <span>📚</span> <span>Browse Archive</span>
+                  <span>📚</span> <span>Play more</span>
                 </Link>
               </div>
             </div>
@@ -777,7 +777,7 @@ function ArchiveDetail() {
                 Are you ready?
               </h2>
               <p className="text-[10px] sm:text-xs text-gray-600 mb-3 sm:mb-4">
-                Once you start, you'll have 5 minutes and 5 guesses to solve the puzzle!
+                Once you start, you'll have 5 guesses to solve the puzzle
               </p>
               <button
                 onClick={handleReady}
