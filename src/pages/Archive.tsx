@@ -46,12 +46,47 @@ function Archive() {
   const [loading, setLoading] = useState(true);
   const [playedPuzzleIds, setPlayedPuzzleIds] = useState<Set<string>>(new Set());
   const [playedPuzzleData, setPlayedPuzzleData] = useState<Map<string, PlayedPuzzleInfo>>(new Map());
+  const [pausedPuzzleIds, setPausedPuzzleIds] = useState<Set<string>>(new Set());
   const [showPlayed, setShowPlayed] = useState(false);
 
   useEffect(() => {
     loadArchive();
     loadPlayedPuzzles();
+    loadPausedPuzzles();
   }, []);
+
+  const loadPausedPuzzles = () => {
+    try {
+      const pausedIds = new Set<string>();
+      
+      // Check all localStorage keys for game state
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('rebus_game_state_')) {
+          try {
+            const savedState = localStorage.getItem(key);
+            if (savedState) {
+              const state = JSON.parse(savedState);
+              // Check if state is valid (has puzzleId, isReady, and not expired)
+              if (state.puzzleId && state.isReady) {
+                const hoursSinceSave = (Date.now() - state.timestamp) / (1000 * 60 * 60);
+                if (hoursSinceSave < 24) {
+                  pausedIds.add(state.puzzleId);
+                }
+              }
+            }
+          } catch (error) {
+            // Skip invalid entries
+            console.error('Error parsing game state:', error);
+          }
+        }
+      }
+      
+      setPausedPuzzleIds(pausedIds);
+    } catch (error) {
+      console.error('Error loading paused puzzles:', error);
+    }
+  };
 
   const loadArchive = async () => {
     try {
@@ -231,6 +266,7 @@ function Archive() {
 
                         // Check if this is a Julia puzzle (vegemite, adventure, rugby)
                         const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
+                        const isPaused = pausedPuzzleIds.has(puzzle.id);
                         
                         // Get gradient color based on success rate (or purple for Julia puzzles)
                         const difficultyColor = isJuliaPuzzle ? 'rgb(147, 51, 234)' : getDifficultyColor(puzzle.successRate); // purple-600
@@ -247,13 +283,18 @@ function Archive() {
                                 : `rgba(${difficultyColor.replace('rgb(', '').replace(')', '')}, 0.15)`,
                             }}
                           >
-                            {isJuliaPuzzle && (
-                              <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
+                            <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
+                              {isPaused && (
+                                <span className="text-[9px] sm:text-[10px] font-semibold text-orange-700 bg-orange-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                  ⏸️ Paused
+                                </span>
+                              )}
+                              {isJuliaPuzzle && (
                                 <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
                                   julia
                                 </span>
-                              </div>
-                            )}
+                              )}
+                            </div>
                             <div className="text-center">
                               <div className="text-sm sm:text-base font-semibold mb-2 text-gray-900">
                                 {dateStr}
@@ -318,6 +359,7 @@ function Archive() {
 
                           const isPlayed = playedPuzzleIds.has(puzzle.id);
                           const playedInfo = playedPuzzleData.get(puzzle.id);
+                          const isPaused = pausedPuzzleIds.has(puzzle.id);
 
                           // Check if this is a Julia puzzle (vegemite, adventure, rugby)
                           const isJuliaPuzzle = ['vegemite', 'adventure', 'rugby'].includes(puzzle.answer.toLowerCase());
@@ -342,6 +384,11 @@ function Archive() {
                               }}
                             >
                               <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
+                                {isPaused && (
+                                  <span className="text-[9px] sm:text-[10px] font-semibold text-orange-700 bg-orange-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                    ⏸️ Paused
+                                  </span>
+                                )}
                                 {isPlayed && (
                                   <span className="text-[9px] sm:text-[10px] font-semibold text-gray-600 bg-gray-200 px-1.5 sm:px-2 py-0.5 rounded">
                                     Already played
