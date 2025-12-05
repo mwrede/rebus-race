@@ -30,7 +30,6 @@ function Today() {
   const [guessCount, setGuessCount] = useState(0);
   const [showHintConfirmation, setShowHintConfirmation] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
-  const [pausedElapsedTime, setPausedElapsedTime] = useState<number | null>(null);
   const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
@@ -207,7 +206,6 @@ function Today() {
         const state = JSON.parse(savedState);
         // Only restore if it's for the same puzzle
         if (state.puzzleId === puzzleId && state.isReady) {
-          setPausedElapsedTime(state.elapsedTime);
           setWrongGuesses(state.wrongGuesses || []);
           setGuessCount(state.guessCount || 0);
           setHintUsed(state.hintUsed || false);

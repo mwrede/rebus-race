@@ -25,7 +25,6 @@ function ArchiveDetail() {
   const [guessCount, setGuessCount] = useState(0);
   const [showHintConfirmation, setShowHintConfirmation] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
-  const [pausedElapsedTime, setPausedElapsedTime] = useState<number | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [incorrectCount, setIncorrectCount] = useState<number>(0);
@@ -204,7 +203,6 @@ function ArchiveDetail() {
         const state = JSON.parse(savedState);
         // Only restore if it's for the same puzzle
         if (state.puzzleId === puzzleId && state.isReady) {
-          setPausedElapsedTime(state.elapsedTime);
           setWrongGuesses(state.wrongGuesses || []);
           setGuessCount(state.guessCount || 0);
           setHintUsed(state.hintUsed || false);
