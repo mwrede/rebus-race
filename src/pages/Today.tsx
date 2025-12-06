@@ -1585,7 +1585,7 @@ function Today() {
             </button>
             <div className="pr-8">
               <p className="text-sm sm:text-base text-gray-800 leading-relaxed">
-                I wont use this for anything other than messaging you a reminder <3. I promise
+                I wont use this for anything other than messaging you a reminder {'<3'}. I promise
               </p>
             </div>
           </div>
