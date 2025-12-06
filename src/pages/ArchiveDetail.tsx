@@ -30,6 +30,10 @@ function ArchiveDetail() {
   const [clueSuggestion, setClueSuggestion] = useState('');
   const [submittingClue, setSubmittingClue] = useState(false);
   const [clueSubmitted, setClueSubmitted] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [submittingEmail, setSubmittingEmail] = useState(false);
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [userHasEmail, setUserHasEmail] = useState(false);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [incorrectCount, setIncorrectCount] = useState<number>(0);
   const [averageTime, setAverageTime] = useState<number | null>(null);
@@ -107,6 +111,7 @@ function ArchiveDetail() {
       if (id) {
         loadPuzzle(id);
       }
+      checkUserEmail();
 
     // Save game state before page unload (refresh/close)
     const handleBeforeUnload = () => {
@@ -529,6 +534,82 @@ function ArchiveDetail() {
     }
   };
 
+  const checkUserEmail = async () => {
+    const anonId = localStorage.getItem('rebus_anon_id');
+    if (!anonId) {
+      setUserHasEmail(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('email')
+        .eq('anon_id', anonId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking user email:', error);
+        return;
+      }
+
+      setUserHasEmail(!!data?.email);
+    } catch (error) {
+      console.error('Error checking user email:', error);
+    }
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!emailInput.trim()) {
+      alert('Please enter an email address');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailInput.trim())) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    setSubmittingEmail(true);
+    try {
+      const anonId = localStorage.getItem('rebus_anon_id');
+      if (!anonId) {
+        alert('Please refresh the page and try again');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('users')
+        .upsert({
+          anon_id: anonId,
+          email: emailInput.trim(),
+        }, {
+          onConflict: 'anon_id'
+        });
+
+      if (error) {
+        console.error('Error submitting email:', error);
+        alert('Failed to submit email. Please try again.');
+        return;
+      }
+
+      setEmailSubmitted(true);
+      setUserHasEmail(true);
+      setEmailInput('');
+      alert('Thank you! I can now send you daily reminders.');
+    } catch (error) {
+      console.error('Error submitting email:', error);
+      alert('Failed to submit email. Please try again.');
+    } finally {
+      setSubmittingEmail(false);
+    }
+  };
+
   const handleClueSuggestionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -806,6 +887,12 @@ function ArchiveDetail() {
                 >
                   <span>📤</span> <span>Share Result</span>
                 </button>
+                <Link
+                  to="/leaderboard"
+                  className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+                >
+                  <span>🏆</span> <span>Go to Leaderboard</span>
+                </Link>
                 <Link
                   to="/archive"
                   className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
@@ -1132,6 +1219,12 @@ function ArchiveDetail() {
                 <span>📤</span> <span>Share Result</span>
               </button>
               <Link
+                to="/leaderboard"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>🏆</span> <span>Go to Leaderboard</span>
+              </Link>
+              <Link
                 to="/archive"
                 className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
               >
@@ -1164,6 +1257,58 @@ function ArchiveDetail() {
               )}
             </div>
           )}
+          {submission.is_correct && !userHasEmail && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              {!emailSubmitted ? (
+                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="Enter your email..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="email"
+                  />
+                  <button
+                    type="submit"
+                    disabled={submittingEmail || !emailInput.trim()}
+                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {submittingEmail ? 'Sending...' : 'Submit'}
+                  </button>
+                </form>
+              ) : (
+                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
+              )}
+            </div>
+          )}
+          {submission && !submission.is_correct && !userHasEmail && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              {!emailSubmitted ? (
+                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="Enter your email..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="email"
+                  />
+                  <button
+                    type="submit"
+                    disabled={submittingEmail || !emailInput.trim()}
+                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {submittingEmail ? 'Sending...' : 'Submit'}
+                  </button>
+                </form>
+              ) : (
+                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
+              )}
+            </div>
+          )}
           {!submission.is_correct && (
             <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
               <button
@@ -1172,6 +1317,12 @@ function ArchiveDetail() {
               >
                 <span>📤</span> <span>Share Result</span>
               </button>
+              <Link
+                to="/leaderboard"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>🏆</span> <span>Go to Leaderboard</span>
+              </Link>
               <Link
                 to="/archive"
                 className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
@@ -1202,6 +1353,32 @@ function ArchiveDetail() {
                 </form>
               ) : (
                 <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
+              )}
+            </div>
+          )}
+          {previousSubmission && !userHasEmail && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              {!emailSubmitted ? (
+                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="Enter your email..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="email"
+                  />
+                  <button
+                    type="submit"
+                    disabled={submittingEmail || !emailInput.trim()}
+                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {submittingEmail ? 'Sending...' : 'Submit'}
+                  </button>
+                </form>
+              ) : (
+                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
               )}
             </div>
           )}
