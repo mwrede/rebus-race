@@ -49,6 +49,10 @@ function Archive() {
   const [playedPuzzleData, setPlayedPuzzleData] = useState<Map<string, PlayedPuzzleInfo>>(new Map());
   const [pausedPuzzleIds, setPausedPuzzleIds] = useState<Set<string>>(new Set());
   const [showPlayed, setShowPlayed] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [puzzleAnswer, setPuzzleAnswer] = useState('');
+  const [puzzleImage, setPuzzleImage] = useState<File | null>(null);
+  const [submittingPuzzle, setSubmittingPuzzle] = useState(false);
 
   useEffect(() => {
     loadArchive();
@@ -196,6 +200,93 @@ function Archive() {
       setPlayedPuzzleData(playedData);
     } catch (error) {
       console.error('Error loading played puzzles:', error);
+    }
+  };
+
+  const handlePuzzleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!puzzleImage) {
+      alert('Please upload an image');
+      return;
+    }
+
+    setSubmittingPuzzle(true);
+    try {
+      // Generate a unique filename
+      const timestamp = Date.now();
+      const fileExt = puzzleImage.name.split('.').pop();
+      const fileName = `puzzle-submission-${timestamp}.${fileExt}`;
+
+      // Upload image to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('puzzle-submissions')
+        .upload(fileName, puzzleImage, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        // If bucket doesn't exist, try to create it or use a different approach
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      // Get the public URL
+      const { data: urlData } = supabase.storage
+        .from('puzzle-submissions')
+        .getPublicUrl(fileName);
+
+      const imageUrl = urlData.publicUrl;
+
+      // Save submission to database
+      const { error: dbError } = await supabase
+        .from('puzzle_submissions')
+        .insert({
+          answer: puzzleAnswer.trim() || null,
+          image_url: imageUrl,
+          submitted_at: new Date().toISOString(),
+        });
+
+      if (dbError) {
+        console.error('Database error:', dbError);
+        throw dbError;
+      }
+
+      alert('Thank you for your puzzle submission!');
+      setPuzzleAnswer('');
+      setPuzzleImage(null);
+      setShowSubmitModal(false);
+    } catch (error: any) {
+      console.error('Error submitting puzzle:', error);
+      // If storage bucket doesn't exist, try saving just the metadata
+      if (error.message?.includes('Bucket not found') || error.message?.includes('The resource was not found')) {
+        try {
+          // Save to database with a note that image upload failed
+          const { error: dbError } = await supabase
+            .from('puzzle_submissions')
+            .insert({
+              answer: puzzleAnswer.trim() || null,
+              image_url: null,
+              submitted_at: new Date().toISOString(),
+              notes: 'Image upload failed - storage bucket may need to be created',
+            });
+
+          if (dbError) {
+            throw dbError;
+          }
+
+          alert('Puzzle submitted (image upload failed - please check Supabase storage bucket setup)');
+          setPuzzleAnswer('');
+          setPuzzleImage(null);
+          setShowSubmitModal(false);
+        } catch (dbError) {
+          alert('Failed to submit puzzle. Please try again or contact support.');
+        }
+      } else {
+        alert('Failed to submit puzzle. Please try again.');
+      }
+    } finally {
+      setSubmittingPuzzle(false);
     }
   };
 
@@ -451,6 +542,114 @@ function Archive() {
             );
           })()}
         </>
+      )}
+
+      {/* Submit Puzzle Button */}
+      <div className="mt-8 mb-4 text-center">
+        <button
+          onClick={() => setShowSubmitModal(true)}
+          className="bg-purple-600 text-white py-2 sm:py-3 px-6 sm:px-8 rounded-lg hover:bg-purple-700 font-medium text-sm sm:text-base shadow-md"
+        >
+          📝 Submit a Puzzle
+        </button>
+      </div>
+
+      {/* Submit Puzzle Modal */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowSubmitModal(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Submit a Puzzle</h2>
+              <button
+                onClick={() => setShowSubmitModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handlePuzzleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="puzzle-answer" className="block text-sm font-medium text-gray-700 mb-2">
+                  Puzzle Answer (optional)
+                </label>
+                <input
+                  type="text"
+                  id="puzzle-answer"
+                  value={puzzleAnswer}
+                  onChange={(e) => setPuzzleAnswer(e.target.value)}
+                  placeholder="Enter the puzzle answer..."
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="puzzle-image" className="block text-sm font-medium text-gray-700 mb-2">
+                  Puzzle Image (required)
+                </label>
+                <div className="flex items-center gap-2">
+                  <label className="flex-1 cursor-pointer">
+                    <input
+                      type="file"
+                      id="puzzle-image"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 10 * 1024 * 1024) {
+                            alert('Image must be less than 10MB');
+                            return;
+                          }
+                          setPuzzleImage(file);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <div className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 text-center">
+                      {puzzleImage ? `📷 ${puzzleImage.name}` : '📷 Choose Image'}
+                    </div>
+                  </label>
+                  {puzzleImage && (
+                    <button
+                      type="button"
+                      onClick={() => setPuzzleImage(null)}
+                      className="px-3 py-2 text-sm text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {puzzleImage && (
+                  <div className="mt-2">
+                    <img
+                      src={URL.createObjectURL(puzzleImage)}
+                      alt="Preview"
+                      className="max-w-full max-h-48 rounded-md border border-gray-300"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSubmitModal(false);
+                    setPuzzleAnswer('');
+                    setPuzzleImage(null);
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 font-medium text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingPuzzle || !puzzleImage}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
+                >
+                  {submittingPuzzle ? 'Submitting...' : 'Submit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

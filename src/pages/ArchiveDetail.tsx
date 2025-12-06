@@ -27,6 +27,10 @@ function ArchiveDetail() {
   const [hintUsed, setHintUsed] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [clueSuggestion, setClueSuggestion] = useState('');
+  const [clueImage, setClueImage] = useState<File | null>(null);
+  const [submittingClue, setSubmittingClue] = useState(false);
+  const [clueSubmitted, setClueSubmitted] = useState(false);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [incorrectCount, setIncorrectCount] = useState<number>(0);
   const [averageTime, setAverageTime] = useState<number | null>(null);
@@ -526,6 +530,36 @@ function ArchiveDetail() {
     }
   };
 
+  const handleClueSuggestionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!puzzle) return;
+
+    setSubmittingClue(true);
+    try {
+      // Store clue suggestion in a table (you may need to create this table)
+      // For now, we'll just log it and show success
+      console.log('Clue suggestion:', {
+        puzzleId: puzzle.id,
+        suggestion: clueSuggestion,
+        hasImage: !!clueImage,
+        imageSize: clueImage?.size,
+      });
+
+      // TODO: Store in database or send via email
+      // Example: await supabase.from('clue_suggestions').insert({...})
+
+      setClueSubmitted(true);
+      setClueSuggestion('');
+      setClueImage(null);
+      alert('Thank you for your clue suggestion!');
+    } catch (error) {
+      console.error('Error submitting clue suggestion:', error);
+      alert('Failed to submit clue suggestion. Please try again.');
+    } finally {
+      setSubmittingClue(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -764,6 +798,53 @@ function ArchiveDetail() {
                   <span>📚</span> <span>Play more</span>
                 </Link>
               </div>
+              {previousSubmission && (
+                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+                  <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
+                  {!clueSubmitted ? (
+                    <form onSubmit={handleClueSuggestionSubmit} className="space-y-2">
+                      <input
+                        type="text"
+                        value={clueSuggestion}
+                        onChange={(e) => setClueSuggestion(e.target.value)}
+                        placeholder="Enter your suggestion..."
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <div className="flex items-center gap-2">
+                        <label className="flex-1 cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 5 * 1024 * 1024) {
+                                  alert('Image must be less than 5MB');
+                                  return;
+                                }
+                                setClueImage(file);
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <div className="px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-md hover:bg-gray-50 text-center">
+                            {clueImage ? `📷 ${clueImage.name}` : '📷 Upload Image'}
+                          </div>
+                        </label>
+                        <button
+                          type="submit"
+                          disabled={submittingClue || (!clueSuggestion.trim() && !clueImage)}
+                          className="px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                          {submittingClue ? 'Sending...' : 'Submit'}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1046,8 +1127,55 @@ function ArchiveDetail() {
                 to="/archive"
                 className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
               >
-                <span>📚</span> <span>Browse Archive</span>
+                <span>📚</span> <span>Play more</span>
               </Link>
+            </div>
+          )}
+          {submission.is_correct && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
+              {!clueSubmitted ? (
+                <form onSubmit={handleClueSuggestionSubmit} className="space-y-2">
+                  <input
+                    type="text"
+                    value={clueSuggestion}
+                    onChange={(e) => setClueSuggestion(e.target.value)}
+                    placeholder="Enter your suggestion..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              alert('Image must be less than 5MB');
+                              return;
+                            }
+                            setClueImage(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <div className="px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-md hover:bg-gray-50 text-center">
+                        {clueImage ? `📷 ${clueImage.name}` : '📷 Upload Image'}
+                      </div>
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={submittingClue || (!clueSuggestion.trim() && !clueImage)}
+                      className="px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      {submittingClue ? 'Sending...' : 'Submit'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
+              )}
             </div>
           )}
           {!submission.is_correct && (
@@ -1062,8 +1190,55 @@ function ArchiveDetail() {
                 to="/archive"
                 className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
               >
-                <span>📚</span> <span>Browse Archive</span>
+                <span>📚</span> <span>Play more</span>
               </Link>
+            </div>
+          )}
+          {!submission.is_correct && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
+              {!clueSubmitted ? (
+                <form onSubmit={handleClueSuggestionSubmit} className="space-y-2">
+                  <input
+                    type="text"
+                    value={clueSuggestion}
+                    onChange={(e) => setClueSuggestion(e.target.value)}
+                    placeholder="Enter your suggestion..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              alert('Image must be less than 5MB');
+                              return;
+                            }
+                            setClueImage(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <div className="px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-md hover:bg-gray-50 text-center">
+                        {clueImage ? `📷 ${clueImage.name}` : '📷 Upload Image'}
+                      </div>
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={submittingClue || (!clueSuggestion.trim() && !clueImage)}
+                      className="px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                      {submittingClue ? 'Sending...' : 'Submit'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
+              )}
             </div>
           )}
         </div>
