@@ -544,15 +544,17 @@ function Archive() {
         </>
       )}
 
-      {/* Submit Puzzle Button */}
-      <div className="mt-8 mb-4 text-center">
-        <button
-          onClick={() => setShowSubmitModal(true)}
-          className="bg-purple-600 text-white py-2 sm:py-3 px-6 sm:px-8 rounded-lg hover:bg-purple-700 font-medium text-sm sm:text-base shadow-md"
-        >
-          📝 Submit a Puzzle
-        </button>
-      </div>
+      {/* Submit Puzzle Button - Hidden for now */}
+      {false && (
+        <div className="mt-8 mb-4 text-center">
+          <button
+            onClick={() => setShowSubmitModal(true)}
+            className="bg-purple-600 text-white py-2 sm:py-3 px-6 sm:px-8 rounded-lg hover:bg-purple-700 font-medium text-sm sm:text-base shadow-md"
+          >
+            📝 Submit a Puzzle
+          </button>
+        </div>
+      )}
 
       {/* Submit Puzzle Modal */}
       {showSubmitModal && (
