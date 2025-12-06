@@ -184,9 +184,13 @@ function AppContent({
             <div className="flex justify-between items-center h-12 sm:h-14 md:h-16">
               <Link
                 to="/today"
-                className="inline-flex items-center px-1 sm:px-2 md:px-4 py-1 text-base sm:text-lg md:text-xl font-bold text-gray-900"
+                className="inline-flex items-center px-1 sm:px-2 md:px-4 py-1"
               >
-                🧩 <span className="hidden sm:inline ml-1">Rebus Race</span>
+                <img 
+                  src="/rebus-logo.png" 
+                  alt="Rebus Race" 
+                  className="h-8 sm:h-10 md:h-12 w-auto"
+                />
               </Link>
               <div className="flex items-center space-x-0.5 sm:space-x-1 md:space-x-2">
                 {username && (

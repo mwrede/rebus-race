@@ -593,14 +593,15 @@ function ArchiveDetail() {
         return;
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('users')
         .upsert({
           anon_id: anonId,
           email: emailInput.trim(),
         }, {
           onConflict: 'anon_id'
-        });
+        })
+        .select();
 
       if (error) {
         console.error('Error submitting email:', error);
@@ -608,6 +609,7 @@ function ArchiveDetail() {
         return;
       }
 
+      console.log('Email successfully saved to users table:', data);
       setEmailSubmitted(true);
       setUserHasEmail(true);
       setEmailInput('');
