@@ -8,6 +8,7 @@ interface UsernamePromptProps {
 
 function UsernamePrompt({ onComplete }: UsernamePromptProps) {
   const [input, setInput] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isChecking, setIsChecking] = useState(false);
 
@@ -80,6 +81,7 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
           .upsert({
             anon_id: anonId,
             username: trimmed,
+            email: email.trim() || null,
           }, {
             onConflict: 'anon_id'
           });
@@ -126,6 +128,23 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
             {error && (
               <p className="mt-2 text-sm text-red-600">{error}</p>
             )}
+          </div>
+          <div className="mb-4">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Email <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your email (optional)..."
+            />
+            <p className="mt-1 text-xs text-gray-500 italic">I can send you daily reminders</p>
           </div>
           <button
             type="submit"
