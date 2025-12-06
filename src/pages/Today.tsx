@@ -712,7 +712,7 @@ function Today() {
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
       <h1 
-        className="text-sm sm:text-base md:text-lg font-bold mb-1 sm:mb-1.5 text-center animate-bounce-to-top"
+        className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-1 sm:mb-1.5 text-center animate-bounce-to-top"
         style={{
           fontFamily: "'Solarona', serif",
           textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
@@ -722,9 +722,7 @@ function Today() {
           paddingTop: '0.5rem'
         }}
       >
-        <span className="inline-block">____</span>
-        <span className="inline-block mx-2">{dateStr}</span>
-        <span className="inline-block">____</span>
+        {dateStr}
       </h1>
 
       {alreadyPlayed && previousSubmission && (
