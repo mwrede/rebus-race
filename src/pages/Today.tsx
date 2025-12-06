@@ -700,10 +700,30 @@ function Today() {
     );
   }
 
+  // Get today's date in a nice format
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
-      <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-1.5 sm:mb-2 md:mb-3 text-center">
-        Today's Puzzle
+      <h1 
+        className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 mb-1.5 sm:mb-2 md:mb-3 text-center animate-bounce-in"
+        style={{
+          fontFamily: "'Bungee', 'Impact', 'Arial Black', sans-serif",
+          textShadow: '2px 2px 4px rgba(0,0,0,0.1)',
+          letterSpacing: '0.05em'
+        }}
+      >
+        <span className="inline-block animate-slide-in-left">____</span>
+        <span className="inline-block mx-2 animate-fade-in">{dateStr}</span>
+        <span className="inline-block animate-slide-in-right">____</span>
+        <br />
+        <span className="inline-block animate-bounce-in-delay text-blue-600">puzzle</span>
       </h1>
 
       {alreadyPlayed && previousSubmission && (

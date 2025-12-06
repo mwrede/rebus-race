@@ -71,6 +71,24 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
       return;
     }
 
+    // Add user to users table
+    const anonId = localStorage.getItem('rebus_anon_id');
+    if (anonId) {
+      try {
+        await supabase
+          .from('users')
+          .upsert({
+            anon_id: anonId,
+            username: trimmed,
+          }, {
+            onConflict: 'anon_id'
+          });
+      } catch (error) {
+        console.error('Error adding user to users table:', error);
+        // Continue anyway - don't block username creation
+      }
+    }
+
     setUsername(trimmed);
     onComplete(trimmed);
   };
