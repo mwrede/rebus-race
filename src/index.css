@@ -2,13 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Solarona Font */
+/* SOLarana Font */
 @font-face {
-  font-family: 'Solarona';
-  src: url('/fonts/solarona.woff2') format('woff2'),
-       url('/fonts/solarona.woff') format('woff'),
-       url('/fonts/solarona.ttf') format('truetype'),
-       url('/fonts/solarona.otf') format('opentype');
+  font-family: 'SOLarana';
+  src: url('/fonts/SOLarana.woff2') format('woff2'),
+       url('/fonts/SOLarana.woff') format('woff'),
+       url('/fonts/SOLarana.ttf') format('truetype'),
+       url('/fonts/SOLarana.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;

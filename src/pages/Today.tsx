@@ -712,9 +712,9 @@ function Today() {
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
       <h1 
-        className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-1 sm:mb-1.5 text-center animate-bounce-to-top"
+        className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-1 sm:mb-1.5 text-center"
         style={{
-          fontFamily: "'Solarona', serif",
+          fontFamily: "'SOLarana', serif",
           textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
           letterSpacing: '0.1em',
           color: '#2563eb',
