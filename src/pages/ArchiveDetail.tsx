@@ -34,6 +34,7 @@ function ArchiveDetail() {
   const [submittingEmail, setSubmittingEmail] = useState(false);
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [userHasEmail, setUserHasEmail] = useState(false);
+  const [showPrivacyNote, setShowPrivacyNote] = useState(false);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [incorrectCount, setIncorrectCount] = useState<number>(0);
   const [averageTime, setAverageTime] = useState<number | null>(null);
@@ -513,15 +514,24 @@ function ArchiveDetail() {
     }
   };
 
+  const getGuessEmojis = (guessCount: number, isCorrect: boolean): string => {
+    if (!isCorrect) {
+      // For incorrect, show all X emojis
+      return '❌'.repeat(Math.min(guessCount, 5));
+    }
+    // For correct, show checkmarks for correct guesses
+    return '✅'.repeat(guessCount) + '⬜'.repeat(5 - guessCount);
+  };
+
   const handleShare = async () => {
     if (!submission || !puzzle) return;
 
     const timeSeconds = (submission.time_ms / 1000).toFixed(2);
-    const resultText = submission.is_correct 
-      ? `I solved a Rebus Race puzzle in ${timeSeconds}s!`
-      : `I tried a Rebus Race puzzle but didn't get it right.`;
+    const guessEmojis = getGuessEmojis(submission.guess_count || 0, submission.is_correct);
+    const rankText = submission.is_correct && rank ? ` Rank #${rank}` : '';
     const puzzleLink = `${window.location.origin}/archive/${puzzle.id}`;
-    const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay this puzzle: ${puzzleLink}`;
+    const puzzleDate = new Date(puzzle.date);
+    const shareText = `Rebus Race ${puzzleDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n\n${guessEmojis}\n\nTime: ${timeSeconds}s${rankText}\n\n${puzzleLink}`;
 
     // Copy to clipboard
     try {
@@ -1259,7 +1269,14 @@ function ArchiveDetail() {
           )}
           {submission.is_correct && !userHasEmail && (
             <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
               {!emailSubmitted ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
                   <input
@@ -1285,7 +1302,14 @@ function ArchiveDetail() {
           )}
           {submission && !submission.is_correct && !userHasEmail && (
             <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
               {!emailSubmitted ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
                   <input
@@ -1358,7 +1382,14 @@ function ArchiveDetail() {
           )}
           {previousSubmission && !userHasEmail && (
             <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
               {!emailSubmitted ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
                   <input

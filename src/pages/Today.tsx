@@ -38,6 +38,7 @@ function Today() {
   const [submittingEmail, setSubmittingEmail] = useState(false);
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [userHasEmail, setUserHasEmail] = useState(false);
+  const [showPrivacyNote, setShowPrivacyNote] = useState(false);
   const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
@@ -407,14 +408,22 @@ function Today() {
     }
   };
 
+  const getGuessEmojis = (guessCount: number, isCorrect: boolean): string => {
+    if (!isCorrect) {
+      // For incorrect, show all X emojis
+      return '❌'.repeat(Math.min(guessCount, 5));
+    }
+    // For correct, show checkmarks for correct guesses
+    return '✅'.repeat(guessCount) + '⬜'.repeat(5 - guessCount);
+  };
+
   const handleShare = async () => {
     if (!submission || !puzzle) return;
 
     const timeSeconds = (submission.time_ms / 1000).toFixed(2);
-    const resultText = submission.is_correct 
-      ? `I solved today's Rebus Race puzzle in ${timeSeconds}s!`
-      : `I tried today's Rebus Race puzzle but didn't get it right.`;
-    const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay at: ${window.location.origin}`;
+    const guessEmojis = getGuessEmojis(submission.guess_count || 0, submission.is_correct);
+    const rankText = submission.is_correct && rank ? ` Rank #${rank}` : '';
+    const shareText = `Rebus Race ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n\n${guessEmojis}\n\nTime: ${timeSeconds}s${rankText}\n\n${window.location.origin}`;
 
     // Copy to clipboard
     try {
@@ -1255,7 +1264,14 @@ function Today() {
           )}
           {submitted && submission && !submission.is_correct && !alreadyPlayed && !userHasEmail && (
             <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
               {!emailSubmitted ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
                   <input
@@ -1285,10 +1301,10 @@ function Today() {
                 onClick={() => {
                   if (previousSubmission) {
                     const timeSeconds = (previousSubmission.time_ms / 1000).toFixed(2);
-                    const resultText = previousSubmission.is_correct 
-                      ? `I solved today's Rebus Race puzzle in ${timeSeconds}s!`
-                      : `I tried today's Rebus Race puzzle but didn't get it right.`;
-                    const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay at: ${window.location.origin}`;
+                    const guessEmojis = getGuessEmojis(previousSubmission.guess_count || 0, previousSubmission.is_correct);
+                    const rankText = previousSubmission.is_correct && rank ? ` Rank #${rank}` : '';
+                    const today = new Date();
+                    const shareText = `Rebus Race ${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n\n${guessEmojis}\n\nTime: ${timeSeconds}s${rankText}\n\n${window.location.origin}`;
 
                     navigator.clipboard.writeText(shareText).then(() => {
                       alert('Result copied to clipboard!');
@@ -1343,7 +1359,14 @@ function Today() {
           )}
           {alreadyPlayed && previousSubmission && previousSubmission.is_correct && !userHasEmail && (
             <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
               {!emailSubmitted ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
                   <input
@@ -1373,10 +1396,10 @@ function Today() {
                 onClick={() => {
                   if (previousSubmission) {
                     const timeSeconds = (previousSubmission.time_ms / 1000).toFixed(2);
-                    const resultText = previousSubmission.is_correct 
-                      ? `I solved today's Rebus Race puzzle in ${timeSeconds}s!`
-                      : `I tried today's Rebus Race puzzle but didn't get it right.`;
-                    const shareText = `I love michael wrede. ${resultText} Can you beat my time?\n\nPlay at: ${window.location.origin}`;
+                    const guessEmojis = getGuessEmojis(previousSubmission.guess_count || 0, previousSubmission.is_correct);
+                    const rankText = previousSubmission.is_correct && rank ? ` Rank #${rank}` : '';
+                    const today = new Date();
+                    const shareText = `Rebus Race ${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n\n${guessEmojis}\n\nTime: ${timeSeconds}s${rankText}\n\n${window.location.origin}`;
 
                     navigator.clipboard.writeText(shareText).then(() => {
                       alert('Result copied to clipboard!');
@@ -1431,7 +1454,14 @@ function Today() {
           )}
           {alreadyPlayed && previousSubmission && !previousSubmission.is_correct && !userHasEmail && (
             <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
               {!emailSubmitted ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
                   <input
@@ -1506,7 +1536,14 @@ function Today() {
           )}
           {submission.is_correct && !alreadyPlayed && !userHasEmail && (
             <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Do you want a daily reminder?</p>
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
               {!emailSubmitted ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
                   <input
