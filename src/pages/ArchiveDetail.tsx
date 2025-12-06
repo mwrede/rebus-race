@@ -531,11 +531,19 @@ function ArchiveDetail() {
 
   const handleClueSuggestionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
     if (!puzzle || !clueSuggestion.trim()) return;
 
     setSubmittingClue(true);
     try {
       const username = getUsername();
+      console.log('Submitting clue suggestion:', {
+        puzzle_id: puzzle.id,
+        suggestion: clueSuggestion.trim(),
+        anon_id: anonId,
+        username: username,
+      });
       const { error } = await supabase
         .from('clue_suggestions')
         .insert({
@@ -809,13 +817,14 @@ function ArchiveDetail() {
                 <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
                   <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
                   {!clueSubmitted ? (
-                    <form onSubmit={handleClueSuggestionSubmit} className="space-y-2">
+                    <form onSubmit={handleClueSuggestionSubmit} className="space-y-2" noValidate>
                       <input
                         type="text"
                         value={clueSuggestion}
                         onChange={(e) => setClueSuggestion(e.target.value)}
                         placeholder="Enter your suggestion..."
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        autoComplete="off"
                       />
                       <button
                         type="submit"

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Puzzle } from '../types';
+import { getUsername } from '../lib/username';
 
 interface PuzzleWithStats extends Puzzle {
   successRate: number | null;
@@ -205,6 +206,8 @@ function Archive() {
 
   const handlePuzzleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
     if (!puzzleImage) {
       alert('Please upload an image');
       return;
@@ -212,10 +215,21 @@ function Archive() {
 
     setSubmittingPuzzle(true);
     try {
+      const username = getUsername();
+      const anonId = localStorage.getItem('rebus_anon_id') || null;
+      
       // Generate a unique filename
       const timestamp = Date.now();
       const fileExt = puzzleImage.name.split('.').pop();
       const fileName = `puzzle-submission-${timestamp}.${fileExt}`;
+
+      console.log('Submitting puzzle:', {
+        answer: puzzleAnswer.trim(),
+        hasImage: !!puzzleImage,
+        imageSize: puzzleImage.size,
+        username: username,
+        anon_id: anonId,
+      });
 
       // Upload image to Supabase Storage
       const { error: uploadError } = await supabase.storage
@@ -245,6 +259,8 @@ function Archive() {
           answer: puzzleAnswer.trim() || null,
           image_url: imageUrl,
           submitted_at: new Date().toISOString(),
+          username: username || null,
+          anon_id: anonId,
         });
 
       if (dbError) {
@@ -261,6 +277,9 @@ function Archive() {
       // If storage bucket doesn't exist, try saving just the metadata
       if (error.message?.includes('Bucket not found') || error.message?.includes('The resource was not found')) {
         try {
+          const username = getUsername();
+          const anonId = localStorage.getItem('rebus_anon_id') || null;
+          
           // Save to database with a note that image upload failed
           const { error: dbError } = await supabase
             .from('puzzle_submissions')
@@ -269,6 +288,8 @@ function Archive() {
               image_url: null,
               submitted_at: new Date().toISOString(),
               notes: 'Image upload failed - storage bucket may need to be created',
+              username: username || null,
+              anon_id: anonId,
             });
 
           if (dbError) {
@@ -569,7 +590,7 @@ function Archive() {
                 ×
               </button>
             </div>
-            <form onSubmit={handlePuzzleSubmit} className="space-y-4">
+            <form onSubmit={handlePuzzleSubmit} className="space-y-4" noValidate>
               <div>
                 <label htmlFor="puzzle-answer" className="block text-sm font-medium text-gray-700 mb-2">
                   Puzzle Answer (optional)
@@ -581,6 +602,7 @@ function Archive() {
                   onChange={(e) => setPuzzleAnswer(e.target.value)}
                   placeholder="Enter the puzzle answer..."
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  autoComplete="off"
                 />
               </div>
               <div>
@@ -593,6 +615,7 @@ function Archive() {
                       type="file"
                       id="puzzle-image"
                       accept="image/*"
+                      capture="environment"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -612,7 +635,11 @@ function Archive() {
                   {puzzleImage && (
                     <button
                       type="button"
-                      onClick={() => setPuzzleImage(null)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setPuzzleImage(null);
+                      }}
                       className="px-3 py-2 text-sm text-red-600 hover:text-red-700"
                     >
                       Remove
@@ -632,7 +659,9 @@ function Archive() {
               <div className="flex gap-3 justify-end pt-2">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setShowSubmitModal(false);
                     setPuzzleAnswer('');
                     setPuzzleImage(null);
