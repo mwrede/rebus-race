@@ -1272,27 +1272,6 @@ function Today() {
                   Do you want a daily reminder?
                 </span>
               </p>
-              {!emailSubmitted ? (
-                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Enter your email..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    autoComplete="email"
-                  />
-                  <button
-                    type="submit"
-                    disabled={submittingEmail || !emailInput.trim()}
-                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {submittingEmail ? 'Sending...' : 'Submit'}
-                  </button>
-                </form>
-              ) : (
-                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
-              )}
             </div>
           )}
           {alreadyPlayed && previousSubmission && previousSubmission.is_correct && (
@@ -1367,27 +1346,6 @@ function Today() {
                   Do you want a daily reminder?
                 </span>
               </p>
-              {!emailSubmitted ? (
-                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Enter your email..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    autoComplete="email"
-                  />
-                  <button
-                    type="submit"
-                    disabled={submittingEmail || !emailInput.trim()}
-                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {submittingEmail ? 'Sending...' : 'Submit'}
-                  </button>
-                </form>
-              ) : (
-                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
-              )}
             </div>
           )}
           {alreadyPlayed && previousSubmission && !previousSubmission.is_correct && (
@@ -1462,27 +1420,6 @@ function Today() {
                   Do you want a daily reminder?
                 </span>
               </p>
-              {!emailSubmitted ? (
-                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Enter your email..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    autoComplete="email"
-                  />
-                  <button
-                    type="submit"
-                    disabled={submittingEmail || !emailInput.trim()}
-                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {submittingEmail ? 'Sending...' : 'Submit'}
-                  </button>
-                </form>
-              ) : (
-                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
-              )}
             </div>
           )}
           
@@ -1544,27 +1481,588 @@ function Today() {
                   Do you want a daily reminder?
                 </span>
               </p>
-              {!emailSubmitted ? (
-                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Privacy Note Modal */}
+      {showPrivacyNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowPrivacyNote(false)}>
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 sm:p-8 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowPrivacyNote(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              ×
+            </button>
+            <div className="pr-8">
+              <p className="text-sm sm:text-base text-gray-800 leading-relaxed">
+                I wont use this for anything other than messaging you a reminder {'<3'}. I promise
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+export default Today;
+
+
+                    className="block text-[9px] sm:text-[10px] font-medium text-gray-700 mb-0.5"
+                  >
+                    Your Answer
+                  </label>
                   <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Enter your email..."
+                    type="text"
+                    id="answer"
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES}
+                    className="w-full px-2 py-1 text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                    placeholder="Enter your answer..."
+                    autoFocus
+                    style={{ fontSize: '16px' }}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES || !answer.trim() || isSubmitting}
+                  className="w-full bg-blue-600 text-white py-1.5 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit Answer'}
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Hint Confirmation Dialog */}
+      {showHintConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3">
+              Use Hint?
+            </h3>
+            <p className="text-sm sm:text-base text-gray-700 mb-4">
+              Using a hint will add <span className="font-semibold text-red-600">1 minute (60 seconds)</span> to your time.
+              Are you sure you want to continue?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleHintCancel}
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleHintConfirm}
+                className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 font-medium text-sm"
+              >
+                Yes, Use Hint
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rules Modal - Cute Letter */}
+      {showRules && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowRules(false)}>
+          <div 
+            className="max-w-lg w-full p-6 sm:p-8 relative shadow-2xl" 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ 
+              fontFamily: 'Georgia, serif',
+              background: 'linear-gradient(to bottom, #fef9e7 0%, #fef5e7 100%)',
+              backgroundImage: `
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)
+              `,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(0,0,0,0.1)',
+              borderRadius: '8px',
+              border: '1px solid rgba(139, 69, 19, 0.2)',
+            }}
+          >
+            <button
+              onClick={() => setShowRules(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-amber-100 transition-colors z-10"
+            >
+              ×
+            </button>
+            <div className="pr-8">
+              <div className="text-center mb-4">
+                <div className="text-xs sm:text-sm text-amber-700 italic" style={{ color: '#8b4513' }}>A letter from Michael</div>
+              </div>
+              <div className="space-y-3 text-sm sm:text-base leading-relaxed" style={{ color: '#3d2817' }}>
+                <p>
+                  A rebus puzzle is a centuries old tradition dating back to the.... <span className="italic">WHO CARES</span>... it's images put together meant to be a bit of a riddle.
+                </p>
+                <p>
+                  It's tricky, and created by hand by me, <span className="font-semibold" style={{ color: '#8b4513' }}>michael wrede</span>, so may the best rebus puzzler win!
+                </p>
+                <p>
+                  Send me a message at{' '}
+                  <a href="mailto:mwrede8@gmail.com" className="text-blue-600 hover:text-blue-800 underline font-semibold">
+                    mwrede8@gmail.com
+                  </a>{' '}
+                  if you have thoughts about the game.
+                </p>
+                <div className="mt-6 pt-4 border-t" style={{ borderColor: 'rgba(139, 69, 19, 0.3)' }}>
+                  <p className="font-semibold mb-1" style={{ color: '#8b4513' }}>
+                    Love,
+                  </p>
+                  <p className="font-semibold text-lg" style={{ color: '#8b4513' }}>
+                    Michael
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {submitted && submission && (
+        <div className={`rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 ${alreadyPlayed ? 'bg-gray-100 opacity-75' : 'bg-white'}`}>
+          {alreadyPlayed && (
+            <div className="text-center mb-1.5 sm:mb-2 md:mb-3">
+              <div className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 mb-1">
+                Your Result from Today
+              </div>
+            </div>
+          )}
+          <div className="text-center mb-2 sm:mb-3">
+            <div
+              className={`text-2xl sm:text-3xl md:text-4xl mb-1.5 sm:mb-2 md:mb-3 ${
+                submission.is_correct ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
+              {submission.is_correct ? '✓ Correct!' : '✗ Incorrect'}
+            </div>
+            <div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
+              {submission.is_correct
+                ? `Your time: ${(submission.time_ms / 1000).toFixed(2)}s`
+                : `The correct answer was: ${puzzle?.answer}`}
+            </div>
+            {!submission.is_correct && incorrectPercentage !== null && (
+              <div className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3">
+                {incorrectPercentage.toFixed(1)}% of players also got it wrong
+              </div>
+            )}
+            {submission.is_correct && (
+              <>
+                {loadingStats ? (
+                  <div className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-4">
+                    Loading your ranking...
+                  </div>
+                ) : (
+                  <>
+                    {rank !== null && (
+                      <div className="mt-2 sm:mt-3 md:mt-4 mb-2 sm:mb-3 md:mb-4">
+                        <div className="text-base sm:text-lg md:text-xl font-bold text-blue-600 mb-0.5 sm:mb-1">
+                          Today's Rank: #{rank}
+                        </div>
+                        <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">
+                          out of {totalCorrect} correct {totalCorrect === 1 ? 'submission' : 'submissions'}
+                        </div>
+                      </div>
+                    )}
+
+                    {(allTimeRank !== null || averageTime !== null) && (
+                      <div className="mt-1.5 sm:mt-2 mb-2 sm:mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="text-center">
+                          <div className="text-[10px] sm:text-xs font-bold text-blue-700 mb-0.5 sm:mb-1">
+                            All-Time Stats
+                          </div>
+                          <div className="flex justify-center items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
+                            {allTimeRank !== null && (
+                              <span className="font-semibold text-gray-900">
+                                Rank: #{allTimeRank}
+                              </span>
+                            )}
+                            {averageTime !== null && (
+                              <span className="font-semibold text-gray-900">
+                                Avg: {(averageTime / 1000).toFixed(2)}s
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {pastSubmissions.length > 0 && (
+                      <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-200">
+                        <div className="text-xs sm:text-sm md:text-base font-semibold text-gray-900 mb-1.5 sm:mb-2">
+                          Compared to Your Past Results
+                        </div>
+                        {(() => {
+                          const bestPastTime = Math.min(
+                            ...pastSubmissions.map((p) => p.time_ms)
+                          );
+                          const worstPastTime = Math.max(
+                            ...pastSubmissions.map((p) => p.time_ms)
+                          );
+                          const avgPastTime =
+                            pastSubmissions.reduce((sum, p) => sum + p.time_ms, 0) /
+                            pastSubmissions.length;
+                          const isNewBest = submission.time_ms < bestPastTime;
+                          const isFasterThanBest = submission.time_ms < bestPastTime;
+                          const isSlowerThanBest = submission.time_ms > bestPastTime;
+                          const timeDiffFromBest = Math.abs(
+                            submission.time_ms - bestPastTime
+                          );
+                          const timeDiffFromAvg = Math.abs(
+                            submission.time_ms - avgPastTime
+                          );
+
+                          return (
+                            <div className="space-y-2 sm:space-y-3">
+                              <div
+                                className={`p-2 sm:p-3 rounded-lg ${
+                                  isNewBest
+                                    ? 'bg-green-50 border-2 border-green-200'
+                                    : isFasterThanBest
+                                    ? 'bg-green-50'
+                                    : 'bg-gray-50'
+                                }`}
+                              >
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0">
+                                  <span className="text-xs sm:text-sm font-medium text-gray-700">
+                                    {isNewBest
+                                      ? '🎉 New personal best!'
+                                      : isFasterThanBest
+                                      ? `✓ ${(timeDiffFromBest / 1000).toFixed(2)}s faster than your best`
+                                      : isSlowerThanBest
+                                      ? `✗ ${(timeDiffFromBest / 1000).toFixed(2)}s slower than your best`
+                                      : '= Same as your best'}
+                                  </span>
+                                  <span className="text-xs sm:text-sm font-semibold text-gray-900">
+                                    Best: {(bestPastTime / 1000).toFixed(2)}s
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-[10px] sm:text-xs md:text-sm">
+                                <div className="bg-gray-50 p-1.5 sm:p-2 rounded">
+                                  <div className="text-gray-600 text-[10px] sm:text-xs">Average</div>
+                                  <div className="font-semibold text-gray-900 text-xs sm:text-sm">
+                                    {(avgPastTime / 1000).toFixed(2)}s
+                                  </div>
+                                  {submission.time_ms < avgPastTime && (
+                                    <div className="text-green-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1">
+                                      ✓ {(timeDiffFromAvg / 1000).toFixed(2)}s faster
+                                    </div>
+                                  )}
+                                  {submission.time_ms > avgPastTime && (
+                                    <div className="text-red-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1">
+                                      ✗ {(timeDiffFromAvg / 1000).toFixed(2)}s slower
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="bg-gray-50 p-1.5 sm:p-2 rounded">
+                                  <div className="text-gray-600 text-[10px] sm:text-xs">Slowest</div>
+                                  <div className="font-semibold text-gray-900 text-xs sm:text-sm">
+                                    {(worstPastTime / 1000).toFixed(2)}s
+                                  </div>
+                                  {submission.time_ms < worstPastTime && (
+                                    <div className="text-green-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1">
+                                      ✓ Faster than worst
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-[10px] sm:text-xs text-gray-500 text-center">
+                                Based on {pastSubmissions.length} past{' '}
+                                {pastSubmissions.length === 1 ? 'result' : 'results'}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                    {pastSubmissions.length === 0 && (
+                      <div className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-gray-600">
+                        This is your first correct submission! 🎉
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+          {submitted && submission && !submission.is_correct && !alreadyPlayed && (
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+              <button
+                onClick={handleShare}
+                className="inline-flex items-center gap-1 sm:gap-2 bg-red-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-red-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📤</span> <span>Share Result</span>
+              </button>
+              <Link
+                to="/leaderboard"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>🏆</span> <span>Go to Leaderboard</span>
+              </Link>
+              <Link
+                to="/archive"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📚</span> <span>Play more</span>
+              </Link>
+            </div>
+          )}
+          {submitted && submission && !submission.is_correct && !alreadyPlayed && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
+              {!clueSubmitted ? (
+                <form onSubmit={handleClueSuggestionSubmit} className="space-y-2" noValidate>
+                  <input
+                    type="text"
+                    value={clueSuggestion}
+                    onChange={(e) => setClueSuggestion(e.target.value)}
+                    placeholder="Enter your suggestion..."
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    autoComplete="email"
+                    autoComplete="off"
                   />
                   <button
                     type="submit"
-                    disabled={submittingEmail || !emailInput.trim()}
+                    disabled={submittingClue || !clueSuggestion.trim()}
                     className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    {submittingEmail ? 'Sending...' : 'Submit'}
+                    {submittingClue ? 'Sending...' : 'Submit'}
                   </button>
                 </form>
               ) : (
-                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
+                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
               )}
+            </div>
+          )}
+          {submitted && submission && !submission.is_correct && !alreadyPlayed && !userHasEmail && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
+            </div>
+          )}
+          {alreadyPlayed && previousSubmission && previousSubmission.is_correct && (
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+              <button
+                onClick={() => {
+                  if (previousSubmission) {
+                    const timeSeconds = (previousSubmission.time_ms / 1000).toFixed(2);
+                    const guessEmojis = getGuessEmojis(previousSubmission.guess_count || 0, previousSubmission.is_correct);
+                    const rankText = previousSubmission.is_correct && rank ? ` Rank #${rank}` : '';
+                    const today = new Date();
+                    const shareText = `Rebus Race ${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n\n${guessEmojis}\n\nTime: ${timeSeconds}s${rankText}\n\n${window.location.origin}`;
+
+                    navigator.clipboard.writeText(shareText).then(() => {
+                      alert('Result copied to clipboard!');
+                    }).catch(() => {
+                      prompt('Copy this text:', shareText);
+                    });
+                  }
+                }}
+                className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📤</span> <span>Share Result</span>
+              </button>
+              <Link
+                to="/leaderboard"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>🏆</span> <span>Go to Leaderboard</span>
+              </Link>
+              <Link
+                to="/archive"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📚</span> <span>Play more</span>
+              </Link>
+            </div>
+          )}
+          {alreadyPlayed && previousSubmission && previousSubmission.is_correct && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
+              {!clueSubmitted ? (
+                <form onSubmit={handleClueSuggestionSubmit} className="space-y-2" noValidate>
+                  <input
+                    type="text"
+                    value={clueSuggestion}
+                    onChange={(e) => setClueSuggestion(e.target.value)}
+                    placeholder="Enter your suggestion..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="submit"
+                    disabled={submittingClue || !clueSuggestion.trim()}
+                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {submittingClue ? 'Sending...' : 'Submit'}
+                  </button>
+                </form>
+              ) : (
+                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
+              )}
+            </div>
+          )}
+          {alreadyPlayed && previousSubmission && previousSubmission.is_correct && !userHasEmail && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
+            </div>
+          )}
+          {alreadyPlayed && previousSubmission && !previousSubmission.is_correct && (
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+              <button
+                onClick={() => {
+                  if (previousSubmission) {
+                    const timeSeconds = (previousSubmission.time_ms / 1000).toFixed(2);
+                    const guessEmojis = getGuessEmojis(previousSubmission.guess_count || 0, previousSubmission.is_correct);
+                    const rankText = previousSubmission.is_correct && rank ? ` Rank #${rank}` : '';
+                    const today = new Date();
+                    const shareText = `Rebus Race ${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n\n${guessEmojis}\n\nTime: ${timeSeconds}s${rankText}\n\n${window.location.origin}`;
+
+                    navigator.clipboard.writeText(shareText).then(() => {
+                      alert('Result copied to clipboard!');
+                    }).catch(() => {
+                      prompt('Copy this text:', shareText);
+                    });
+                  }
+                }}
+                className="inline-flex items-center gap-1 sm:gap-2 bg-red-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-red-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📤</span> <span>Share Result</span>
+              </button>
+              <Link
+                to="/leaderboard"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>🏆</span> <span>Go to Leaderboard</span>
+              </Link>
+              <Link
+                to="/archive"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📚</span> <span>Play more</span>
+              </Link>
+            </div>
+          )}
+          {alreadyPlayed && previousSubmission && !previousSubmission.is_correct && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
+              {!clueSubmitted ? (
+                <form onSubmit={handleClueSuggestionSubmit} className="space-y-2" noValidate>
+                  <input
+                    type="text"
+                    value={clueSuggestion}
+                    onChange={(e) => setClueSuggestion(e.target.value)}
+                    placeholder="Enter your suggestion..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="submit"
+                    disabled={submittingClue || !clueSuggestion.trim()}
+                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {submittingClue ? 'Sending...' : 'Submit'}
+                  </button>
+                </form>
+              ) : (
+                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
+              )}
+            </div>
+          )}
+          {alreadyPlayed && previousSubmission && !previousSubmission.is_correct && !userHasEmail && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
+            </div>
+          )}
+          
+          {submission.is_correct && !alreadyPlayed && (
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-200 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+              <button
+                onClick={handleShare}
+                className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📤</span> <span>Share Result</span>
+              </button>
+              <Link
+                to="/leaderboard"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>🏆</span> <span>Go to Leaderboard</span>
+              </Link>
+              <Link
+                to="/archive"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+              >
+                <span>📚</span> <span>Go to Archive</span>
+              </Link>
+            </div>
+          )}
+          {submission.is_correct && !alreadyPlayed && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
+              {!clueSubmitted ? (
+                <form onSubmit={handleClueSuggestionSubmit} className="space-y-2" noValidate>
+                  <input
+                    type="text"
+                    value={clueSuggestion}
+                    onChange={(e) => setClueSuggestion(e.target.value)}
+                    placeholder="Enter your suggestion..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="submit"
+                    disabled={submittingClue || !clueSuggestion.trim()}
+                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {submittingClue ? 'Sending...' : 'Submit'}
+                  </button>
+                </form>
+              ) : (
+                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
+              )}
+            </div>
+          )}
+          {submission.is_correct && !alreadyPlayed && !userHasEmail && (
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
+                <span 
+                  className="italic cursor-pointer underline hover:text-blue-600"
+                  onClick={() => setShowPrivacyNote(true)}
+                >
+                  Do you want a daily reminder?
+                </span>
+              </p>
             </div>
           )}
         </div>

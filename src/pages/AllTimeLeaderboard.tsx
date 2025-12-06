@@ -8,6 +8,7 @@ interface LeaderboardEntry {
   puzzlesWon: number;
   totalTime: number;
   anon_id: string;
+  streak: number;
 }
 
 function AllTimeLeaderboard() {
@@ -52,6 +53,70 @@ function AllTimeLeaderboard() {
         (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
       ) || [];
 
+      // Get all daily puzzles ordered by date (newest first) for streak calculation
+      const dailyPuzzles = puzzles?.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id)) || [];
+      dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
+
+      // Get all submissions (both correct and incorrect) for daily puzzles to calculate streaks
+      const { data: allSubmissions, error: allSubmissionsError } = await supabase
+        .from('submissions')
+        .select('anon_id, puzzle_id, is_correct, username, created_at')
+        .order('created_at', { ascending: false });
+
+      if (allSubmissionsError) throw allSubmissionsError;
+
+      // Filter to only daily puzzles
+      const dailyAllSubmissions = (allSubmissions || []).filter(
+        (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
+      );
+
+      // Group submissions by anon_id for streak calculation
+      const userSubmissionsForStreak = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
+      
+      dailyAllSubmissions.forEach((s: Submission) => {
+        if (!s.anon_id) return;
+        
+        if (!userSubmissionsForStreak.has(s.anon_id)) {
+          userSubmissionsForStreak.set(s.anon_id, {
+            username: s.username || null,
+            submissions: new Map(),
+          });
+        }
+        
+        const userData = userSubmissionsForStreak.get(s.anon_id)!;
+        // Only keep the most recent submission for each puzzle
+        if (!userData.submissions.has(s.puzzle_id)) {
+          userData.submissions.set(s.puzzle_id, s.is_correct);
+        }
+        // Update username if available
+        if (s.username) {
+          userData.username = s.username;
+        }
+      });
+
+      // Calculate streaks for each user
+      const streakMap = new Map<string, number>();
+      userSubmissionsForStreak.forEach((userData, anon_id) => {
+        let currentStreak = 0;
+        
+        // Count consecutive wins from most recent puzzle backwards
+        for (const puzzle of dailyPuzzles) {
+          const result = userData.submissions.get(puzzle.id);
+          if (result === true) {
+            // Win - continue streak
+            currentStreak++;
+          } else if (result === false) {
+            // Loss - break streak
+            break;
+          } else {
+            // No submission for this puzzle - break streak
+            break;
+          }
+        }
+        
+        streakMap.set(anon_id, currentStreak);
+      });
+
       // Group by anon_id and calculate stats
       const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();
 
@@ -80,6 +145,7 @@ function AllTimeLeaderboard() {
         .map(([anon_id, stats]) => {
           const totalTime = stats.times.reduce((sum, time) => sum + time, 0);
           const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
+          const streak = streakMap.get(anon_id) || 0;
 
           return {
             anon_id,
@@ -87,6 +153,7 @@ function AllTimeLeaderboard() {
             averageTime,
             puzzlesWon: stats.puzzles.size,
             totalTime,
+            streak,
           };
         })
         .filter((entry) => entry.puzzlesWon >= 1) // At least 1 puzzle won
@@ -149,6 +216,9 @@ function AllTimeLeaderboard() {
                   <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Games Won
                   </th>
+                  <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Streak
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -180,6 +250,11 @@ function AllTimeLeaderboard() {
                     <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
                       <span className="text-[10px] sm:text-xs md:text-sm text-gray-900 font-semibold">
                         {entry.puzzlesWon}
+                      </span>
+                    </td>
+                    <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
+                      <span className="text-[10px] sm:text-xs md:text-sm text-orange-600 font-semibold">
+                        {entry.streak > 0 ? `🔥 ${entry.streak}` : '—'}
                       </span>
                     </td>
                   </tr>

@@ -1277,27 +1277,6 @@ function ArchiveDetail() {
                   Do you want a daily reminder?
                 </span>
               </p>
-              {!emailSubmitted ? (
-                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Enter your email..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    autoComplete="email"
-                  />
-                  <button
-                    type="submit"
-                    disabled={submittingEmail || !emailInput.trim()}
-                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {submittingEmail ? 'Sending...' : 'Submit'}
-                  </button>
-                </form>
-              ) : (
-                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
-              )}
             </div>
           )}
           {submission && !submission.is_correct && !userHasEmail && (
@@ -1310,27 +1289,6 @@ function ArchiveDetail() {
                   Do you want a daily reminder?
                 </span>
               </p>
-              {!emailSubmitted ? (
-                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Enter your email..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    autoComplete="email"
-                  />
-                  <button
-                    type="submit"
-                    disabled={submittingEmail || !emailInput.trim()}
-                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {submittingEmail ? 'Sending...' : 'Submit'}
-                  </button>
-                </form>
-              ) : (
-                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
-              )}
             </div>
           )}
           {!submission.is_correct && (
@@ -1390,8 +1348,30 @@ function ArchiveDetail() {
                   Do you want a daily reminder?
                 </span>
               </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Privacy Note Modal */}
+      {showPrivacyNote && !userHasEmail && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowPrivacyNote(false)}>
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 sm:p-8 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowPrivacyNote(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              ×
+            </button>
+            <div className="pr-8">
+              <p className="text-sm sm:text-base text-gray-800 leading-relaxed mb-4">
+                I wont use this for anything other than messaging you a reminder {'<3'}. I promise
+              </p>
               {!emailSubmitted ? (
-                <form onSubmit={handleEmailSubmit} className="space-y-2" noValidate>
+                <form onSubmit={handleEmailSubmit} className="space-y-3" noValidate>
                   <input
                     type="email"
                     value={emailInput}
@@ -1409,30 +1389,8 @@ function ArchiveDetail() {
                   </button>
                 </form>
               ) : (
-                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you! I can now send you daily reminders.</p>
+                <p className="text-sm sm:text-base text-green-600">Thank you! I can now send you daily reminders.</p>
               )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Privacy Note Modal */}
-      {showPrivacyNote && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowPrivacyNote(false)}>
-          <div 
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 sm:p-8 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowPrivacyNote(false)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-            >
-              ×
-            </button>
-            <div className="pr-8">
-              <p className="text-sm sm:text-base text-gray-800 leading-relaxed">
-                I wont use this for anything other than messaging you a reminder {'<3'}. I promise
-              </p>
             </div>
           </div>
         </div>
