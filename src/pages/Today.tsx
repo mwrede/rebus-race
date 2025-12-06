@@ -712,19 +712,19 @@ function Today() {
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
       <h1 
-        className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-1.5 sm:mb-2 md:mb-3 text-center animate-bounce-to-top"
+        className="text-sm sm:text-base md:text-lg font-bold mb-1 sm:mb-1.5 text-center animate-bounce-to-top"
         style={{
-          fontFamily: "'Playfair Display', 'Cinzel', 'Uncial Antiqua', serif",
+          fontFamily: "'Solarona', serif",
           textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
           letterSpacing: '0.1em',
-          color: '#2563eb'
+          color: '#2563eb',
+          marginTop: '0',
+          paddingTop: '0.5rem'
         }}
       >
         <span className="inline-block">____</span>
         <span className="inline-block mx-2">{dateStr}</span>
         <span className="inline-block">____</span>
-        <br />
-        <span className="inline-block text-blue-600">puzzle</span>
       </h1>
 
       {alreadyPlayed && previousSubmission && (
