@@ -542,7 +542,16 @@ function ArchiveDetail() {
           suggestion: clueSuggestion.trim(),
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error submitting clue suggestion:', error);
+        // Check if it's a table not found error
+        if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+          alert('Clue suggestions feature is not available yet. Please try again later.');
+        } else {
+          alert('Failed to submit clue suggestion. Please try again.');
+        }
+        return;
+      }
 
       setClueSubmitted(true);
       setClueSuggestion('');
