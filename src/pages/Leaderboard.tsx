@@ -276,16 +276,21 @@ function Leaderboard() {
         })
         .filter((entry) => entry.puzzlesWon >= 1); // At least 1 puzzle won
 
-      // Sort by average time (ascending - fastest first)
-      const sortedByTime = [...entries].sort((a, b) => {
+      // Sort by number of wins first (descending - most wins first), then by average time (ascending - fastest first)
+      const sorted = [...entries].sort((a, b) => {
+        // First sort by number of wins (descending)
+        if (a.puzzlesWon !== b.puzzlesWon) {
+          return b.puzzlesWon - a.puzzlesWon;
+        }
+        // If wins are equal, sort by average time (ascending - fastest first)
         if (a.averageTime === 0 && b.averageTime === 0) return 0;
         if (a.averageTime === 0) return 1;
         if (b.averageTime === 0) return -1;
         return a.averageTime - b.averageTime;
       });
       
-      console.log('All-time leaderboard entries:', sortedByTime.length);
-      setAllTimeLeaderboard(sortedByTime);
+      console.log('All-time leaderboard entries:', sorted.length);
+      setAllTimeLeaderboard(sorted);
     } catch (error) {
       console.error('Error loading all-time leaderboard:', error);
       // Set empty array on error so UI doesn't show loading forever

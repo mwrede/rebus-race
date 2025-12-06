@@ -91,7 +91,11 @@ function AllTimeLeaderboard() {
         })
         .filter((entry) => entry.puzzlesWon >= 1) // At least 1 puzzle won
         .sort((a, b) => {
-          // Sort by average time (ascending - fastest first)
+          // First sort by number of wins (descending - most wins first)
+          if (a.puzzlesWon !== b.puzzlesWon) {
+            return b.puzzlesWon - a.puzzlesWon;
+          }
+          // If wins are equal, sort by average time (ascending - fastest first)
           if (a.averageTime === 0 && b.averageTime === 0) return 0;
           if (a.averageTime === 0) return 1;
           if (b.averageTime === 0) return -1;
@@ -120,7 +124,7 @@ function AllTimeLeaderboard() {
         All-Time Leaderboard
       </h1>
       <p className="text-center text-xs sm:text-sm text-gray-600 mb-4 sm:mb-6">
-        Ranked by lowest average response time
+        Ranked by number of wins, then by lowest average time
       </p>
 
       {leaderboard.length === 0 ? (

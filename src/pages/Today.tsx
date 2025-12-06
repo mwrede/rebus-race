@@ -380,6 +380,11 @@ function Today() {
         })
         .filter((entry) => entry.puzzlesWon >= 1)
         .sort((a, b) => {
+          // First sort by number of wins (descending - most wins first)
+          if (a.puzzlesWon !== b.puzzlesWon) {
+            return b.puzzlesWon - a.puzzlesWon;
+          }
+          // If wins are equal, sort by average time (ascending - fastest first)
           if (a.averageTime === 0 && b.averageTime === 0) return 0;
           if (a.averageTime === 0) return 1;
           if (b.averageTime === 0) return -1;
@@ -423,11 +428,14 @@ function Today() {
 
     setSubmittingClue(true);
     try {
+      const username = getUsername();
       const { error } = await supabase
         .from('clue_suggestions')
         .insert({
           puzzle_id: puzzle.id,
           suggestion: clueSuggestion.trim(),
+          anon_id: anonId,
+          username: username || null,
         });
 
       if (error) {

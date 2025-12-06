@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS clue_suggestions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   puzzle_id UUID NOT NULL REFERENCES puzzles(id) ON DELETE CASCADE,
   suggestion TEXT NOT NULL,
+  anon_id TEXT,
+  username TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

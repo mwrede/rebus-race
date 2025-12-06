@@ -535,11 +535,14 @@ function ArchiveDetail() {
 
     setSubmittingClue(true);
     try {
+      const username = getUsername();
       const { error } = await supabase
         .from('clue_suggestions')
         .insert({
           puzzle_id: puzzle.id,
           suggestion: clueSuggestion.trim(),
+          anon_id: anonId,
+          username: username || null,
         });
 
       if (error) {
