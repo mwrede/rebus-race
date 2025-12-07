@@ -647,40 +647,75 @@ function ArchiveDetail() {
         const fileExt = rebusImage.name.split('.').pop();
         const fileName = `rebus-submission-${timestamp}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('puzzle-submissions')
+        console.log('Attempting to upload image:', {
+          fileName,
+          fileSize: rebusImage.size,
+          fileType: rebusImage.type,
+          bucket: 'Image Upload'
+        });
+
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from('Image Upload')
           .upload(fileName, rebusImage, {
             cacheControl: '3600',
             upsert: false
           });
 
         if (uploadError) {
-          console.error('Upload error:', uploadError);
-          alert('Failed to upload image. Please try again.');
-          return;
+          console.error('Upload error details:', {
+            message: uploadError.message,
+            statusCode: uploadError.statusCode,
+            error: uploadError
+          });
+          
+          // If bucket doesn't exist or permission issue, still try to save answer/clue if provided
+          if (rebusAnswer.trim()) {
+            console.log('Image upload failed, but saving answer/clue to database...');
+            // Continue to save answer/clue without image
+          } else {
+            alert(`Failed to upload image: ${uploadError.message || 'Unknown error'}. Please check the console for details.`);
+            return;
+          }
+        } else {
+          console.log('Image uploaded successfully:', uploadData);
+          
+          // Get the public URL
+          const { data: urlData } = supabase.storage
+            .from('Image Upload')
+            .getPublicUrl(fileName);
+
+          imageUrl = urlData.publicUrl;
+          console.log('Image URL:', imageUrl);
         }
-
-        const { data: urlData } = supabase.storage
-          .from('puzzle-submissions')
-          .getPublicUrl(fileName);
-
-        imageUrl = urlData.publicUrl;
       }
 
       // Save to image_submissions table
-      const { error: dbError } = await supabase
+      const submissionData = {
+        username: username || null,
+        image_url: imageUrl,
+        answer: rebusAnswer.trim() || null,
+      };
+      
+      console.log('Saving to database:', submissionData);
+      
+      const { data: insertData, error: dbError } = await supabase
         .from('image_submissions')
-        .insert({
-          username: username || null,
-          image_url: imageUrl,
-          answer: rebusAnswer.trim() || null,
-        });
+        .insert(submissionData)
+        .select();
 
       if (dbError) {
-        console.error('Database error:', dbError);
-        alert('Failed to save rebus submission. Please try again.');
+        console.error('Database error details:', {
+          message: dbError.message,
+          details: dbError.details,
+          hint: dbError.hint,
+          code: dbError.code,
+          error: dbError
+        });
+        alert(`Failed to save rebus submission: ${dbError.message || 'Unknown error'}. Please check the console for details.`);
         return;
       }
+
+      console.log('Successfully saved to database:', insertData);
 
       setRebusSubmitted(true);
       setRebusImage(null);
