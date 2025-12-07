@@ -27,9 +27,11 @@ function ArchiveDetail() {
   const [hintUsed, setHintUsed] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
-  const [clueSuggestion, setClueSuggestion] = useState('');
-  const [submittingClue, setSubmittingClue] = useState(false);
-  const [clueSubmitted, setClueSubmitted] = useState(false);
+  const [showCreateRebus, setShowCreateRebus] = useState(false);
+  const [rebusImage, setRebusImage] = useState<File | null>(null);
+  const [rebusAnswer, setRebusAnswer] = useState('');
+  const [submittingRebus, setSubmittingRebus] = useState(false);
+  const [rebusSubmitted, setRebusSubmitted] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [submittingEmail, setSubmittingEmail] = useState(false);
   const [emailSubmitted, setEmailSubmitted] = useState(false);
@@ -625,49 +627,71 @@ function ArchiveDetail() {
     }
   };
 
-  const handleClueSuggestionSubmit = async (e: React.FormEvent) => {
+  const handleCreateRebusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!puzzle || !clueSuggestion.trim()) return;
+    if (!rebusAnswer.trim() && !rebusImage) {
+      alert('Please provide either an answer/clue or upload an image');
+      return;
+    }
 
-    setSubmittingClue(true);
+    setSubmittingRebus(true);
     try {
       const username = getUsername();
-      console.log('Submitting clue suggestion:', {
-        puzzle_id: puzzle.id,
-        suggestion: clueSuggestion.trim(),
-        anon_id: anonId,
-        username: username,
-      });
-      const { error } = await supabase
-        .from('clue_suggestions')
+      let imageUrl: string | null = null;
+
+      // Upload image if provided
+      if (rebusImage) {
+        const timestamp = Date.now();
+        const fileExt = rebusImage.name.split('.').pop();
+        const fileName = `rebus-submission-${timestamp}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('puzzle-submissions')
+          .upload(fileName, rebusImage, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          alert('Failed to upload image. Please try again.');
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('puzzle-submissions')
+          .getPublicUrl(fileName);
+
+        imageUrl = urlData.publicUrl;
+      }
+
+      // Save to image_submissions table
+      const { error: dbError } = await supabase
+        .from('image_submissions')
         .insert({
-          puzzle_id: puzzle.id,
-          suggestion: clueSuggestion.trim(),
-          anon_id: anonId,
           username: username || null,
+          image_url: imageUrl,
+          answer: rebusAnswer.trim() || null,
         });
 
-      if (error) {
-        console.error('Error submitting clue suggestion:', error);
-        // Check if it's a table not found error
-        if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
-          alert('Clue suggestions feature is not available yet. Please try again later.');
-        } else {
-          alert('Failed to submit clue suggestion. Please try again.');
-        }
+      if (dbError) {
+        console.error('Database error:', dbError);
+        alert('Failed to save rebus submission. Please try again.');
         return;
       }
 
-      setClueSubmitted(true);
-      setClueSuggestion('');
-      alert('Thank you for your clue suggestion!');
+      setRebusSubmitted(true);
+      setRebusImage(null);
+      setRebusAnswer('');
+      setShowCreateRebus(false);
+      alert('Thank you for your rebus submission!');
     } catch (error) {
-      console.error('Error submitting clue suggestion:', error);
-      alert('Failed to submit clue suggestion. Please try again.');
+      console.error('Error submitting rebus:', error);
+      alert('Failed to submit rebus. Please try again.');
     } finally {
-      setSubmittingClue(false);
+      setSubmittingRebus(false);
     }
   };
 
@@ -917,28 +941,18 @@ function ArchiveDetail() {
               </div>
               {previousSubmission && (
                 <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-                  <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
-                  {!clueSubmitted ? (
-                    <form onSubmit={handleClueSuggestionSubmit} className="space-y-2" noValidate>
-                      <input
-                        type="text"
-                        value={clueSuggestion}
-                        onChange={(e) => setClueSuggestion(e.target.value)}
-                        placeholder="Enter your suggestion..."
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        autoComplete="off"
-                      />
+                  <div className="text-center">
+                    {!rebusSubmitted ? (
                       <button
-                        type="submit"
-                        disabled={submittingClue || !clueSuggestion.trim()}
-                        className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        onClick={() => setShowCreateRebus(true)}
+                        className="inline-flex items-center gap-2 bg-purple-600 text-white py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm"
                       >
-                        {submittingClue ? 'Sending...' : 'Submit'}
+                        <span>✨</span> <span>Create your own rebus</span>
                       </button>
-                    </form>
-                  ) : (
-                    <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
-                  )}
+                    ) : (
+                      <p className="text-xs sm:text-sm text-green-600">Thank you for your rebus submission!</p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -947,8 +961,17 @@ function ArchiveDetail() {
       )}
 
       {!submitted && !alreadyPlayed && (
-        <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 mb-2 sm:mb-3">
-          {!isReady ? (
+        <>
+          <div className="mb-2 sm:mb-3 text-center">
+            <button
+              onClick={() => setShowCreateRebus(true)}
+              className="inline-flex items-center gap-2 bg-purple-600 text-white py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
+            >
+              <span>✨</span> <span>Create your own rebus</span>
+            </button>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 mb-2 sm:mb-3">
+            {!isReady ? (
             <div className="text-center py-3 sm:py-4">
               <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3">
                 Are you ready?
@@ -1073,7 +1096,8 @@ function ArchiveDetail() {
               </form>
             </>
           )}
-        </div>
+          </div>
+        </>
       )}
 
       {/* Hint Confirmation Dialog */}
@@ -1156,6 +1180,99 @@ function ArchiveDetail() {
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Your Own Rebus Modal */}
+      {showCreateRebus && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowCreateRebus(false)}>
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 sm:p-8 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowCreateRebus(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              ×
+            </button>
+            <div className="pr-8">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                Create Your Own Rebus
+              </h3>
+              {!rebusSubmitted ? (
+                <form onSubmit={handleCreateRebusSubmit} className="space-y-4" noValidate>
+                  <div>
+                    <label
+                      htmlFor="rebusAnswer"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Answer or Clue (optional if uploading image)
+                    </label>
+                    <input
+                      type="text"
+                      id="rebusAnswer"
+                      value={rebusAnswer}
+                      onChange={(e) => setRebusAnswer(e.target.value)}
+                      placeholder="Enter the answer or clue..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload Image (optional)
+                    </label>
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <svg className="w-8 h-8 mb-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <p className="mb-2 text-sm text-gray-500">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">PNG, JPG, GIF (MAX. 10MB)</p>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setRebusImage(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {rebusImage && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-sm text-gray-600">{rebusImage.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setRebusImage(null)}
+                          className="text-sm text-red-600 hover:text-red-800"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submittingRebus || (!rebusAnswer.trim() && !rebusImage)}
+                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
+                  >
+                    {submittingRebus ? 'Submitting...' : 'Submit Rebus'}
+                  </button>
+                </form>
+              ) : (
+                <p className="text-sm text-green-600 font-medium">
+                  Thank you for your rebus submission!
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -1249,27 +1366,18 @@ function ArchiveDetail() {
           )}
           {submission.is_correct && (
             <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
-              {!clueSubmitted ? (
-                <form onSubmit={handleClueSuggestionSubmit} className="space-y-2">
-                  <input
-                    type="text"
-                    value={clueSuggestion}
-                    onChange={(e) => setClueSuggestion(e.target.value)}
-                    placeholder="Enter your suggestion..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+              <div className="text-center">
+                {!rebusSubmitted ? (
                   <button
-                    type="submit"
-                    disabled={submittingClue || !clueSuggestion.trim()}
-                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    onClick={() => setShowCreateRebus(true)}
+                    className="inline-flex items-center gap-2 bg-purple-600 text-white py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm"
                   >
-                    {submittingClue ? 'Sending...' : 'Submit'}
+                    <span>✨</span> <span>Create your own rebus</span>
                   </button>
-                </form>
-              ) : (
-                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
-              )}
+                ) : (
+                  <p className="text-xs sm:text-sm text-green-600">Thank you for your rebus submission!</p>
+                )}
+              </div>
             </div>
           )}
           {submission.is_correct && !userHasEmail && (
@@ -1320,27 +1428,18 @@ function ArchiveDetail() {
           )}
           {!submission.is_correct && (
             <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">Have clue suggestions?</p>
-              {!clueSubmitted ? (
-                <form onSubmit={handleClueSuggestionSubmit} className="space-y-2">
-                  <input
-                    type="text"
-                    value={clueSuggestion}
-                    onChange={(e) => setClueSuggestion(e.target.value)}
-                    placeholder="Enter your suggestion..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+              <div className="text-center">
+                {!rebusSubmitted ? (
                   <button
-                    type="submit"
-                    disabled={submittingClue || !clueSuggestion.trim()}
-                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    onClick={() => setShowCreateRebus(true)}
+                    className="inline-flex items-center gap-2 bg-purple-600 text-white py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm"
                   >
-                    {submittingClue ? 'Sending...' : 'Submit'}
+                    <span>✨</span> <span>Create your own rebus</span>
                   </button>
-                </form>
-              ) : (
-                <p className="text-xs sm:text-sm text-green-600 text-center">Thank you for your suggestion!</p>
-              )}
+                ) : (
+                  <p className="text-xs sm:text-sm text-green-600">Thank you for your rebus submission!</p>
+                )}
+              </div>
             </div>
           )}
           {previousSubmission && !userHasEmail && (
