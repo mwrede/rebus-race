@@ -189,7 +189,7 @@ function AppContent({
                 <img 
                   src="/rebus_logo.png" 
                   alt="Rebus Race" 
-                  className="h-8 sm:h-10 md:h-12 w-auto"
+                  className="h-6 sm:h-7 md:h-8 w-auto"
                 />
               </Link>
               <div className="flex items-center space-x-0.5 sm:space-x-1 md:space-x-2">
