@@ -485,10 +485,13 @@ function Today() {
         return;
       }
 
+      const username = getUsername();
+
       const { data, error } = await supabase
         .from('users')
         .upsert({
           anon_id: anonId,
+          username: username || null,
           email: emailInput.trim(),
         }, {
           onConflict: 'anon_id'
