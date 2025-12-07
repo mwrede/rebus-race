@@ -1372,26 +1372,38 @@ function ArchiveDetail() {
               <p className="text-sm sm:text-base text-gray-800 leading-relaxed mb-4">
                 I wont use this for anything other than messaging you a reminder {'<3'}. I promise
               </p>
-              {!emailSubmitted ? (
+              {!emailSubmitted && !userHasEmail ? (
                 <form onSubmit={handleEmailSubmit} className="space-y-3" noValidate>
-                  <input
-                    type="email"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="Enter your email..."
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    autoComplete="email"
-                  />
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      placeholder="Enter your email..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
                   <button
                     type="submit"
                     disabled={submittingEmail || !emailInput.trim()}
-                    className="w-full px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
                   >
-                    {submittingEmail ? 'Sending...' : 'Submit'}
+                    {submittingEmail ? 'Submitting...' : 'Submit'}
                   </button>
                 </form>
               ) : (
-                <p className="text-sm sm:text-base text-green-600">Thank you! I can now send you daily reminders.</p>
+                <p className="text-sm text-green-600 font-medium">
+                  Thank you! Your email has been saved.
+                </p>
               )}
             </div>
           </div>
