@@ -1110,7 +1110,7 @@ function ArchiveDetail() {
             onClick={(e) => e.stopPropagation()} 
             style={{ 
               fontFamily: 'Georgia, serif',
-              background: 'linear-gradient(to bottom, #fef9e7 0%, #fef5e7 100%)',
+              backgroundColor: '#FFF8DC',
               backgroundImage: `
                 repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px),
                 repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)
@@ -1356,7 +1356,7 @@ function ArchiveDetail() {
       )}
 
       {/* Privacy Note Modal */}
-      {showPrivacyNote && !userHasEmail && (
+      {showPrivacyNote && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowPrivacyNote(false)}>
           <div 
             className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 sm:p-8 relative"

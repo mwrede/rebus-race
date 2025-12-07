@@ -34,6 +34,9 @@ function Today() {
   const [clueSuggestion, setClueSuggestion] = useState('');
   const [submittingClue, setSubmittingClue] = useState(false);
   const [clueSubmitted, setClueSubmitted] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [submittingEmail, setSubmittingEmail] = useState(false);
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [userHasEmail, setUserHasEmail] = useState(false);
   const [showPrivacyNote, setShowPrivacyNote] = useState(false);
   const { setTimerActive } = useTimer();
@@ -455,6 +458,60 @@ function Today() {
       setUserHasEmail(!!data?.email);
     } catch (error) {
       console.error('Error checking user email:', error);
+    }
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!emailInput.trim()) {
+      alert('Please enter an email address');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailInput.trim())) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    setSubmittingEmail(true);
+    try {
+      const anonId = localStorage.getItem('rebus_anon_id');
+      if (!anonId) {
+        alert('Please refresh the page and try again');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .upsert({
+          anon_id: anonId,
+          email: emailInput.trim(),
+        }, {
+          onConflict: 'anon_id'
+        })
+        .select();
+
+      if (error) {
+        console.error('Error submitting email:', error);
+        alert('Failed to submit email. Please try again.');
+        return;
+      }
+
+      console.log('Email successfully saved to users table:', data);
+      setEmailSubmitted(true);
+      setUserHasEmail(true);
+      setEmailInput('');
+      setShowPrivacyNote(false);
+      alert('Thank you! I can now send you daily reminders.');
+    } catch (error) {
+      console.error('Error submitting email:', error);
+      alert('Failed to submit email. Please try again.');
+    } finally {
+      setSubmittingEmail(false);
     }
   };
 
@@ -945,7 +1002,7 @@ function Today() {
             onClick={(e) => e.stopPropagation()} 
             style={{ 
               fontFamily: 'Georgia, serif',
-              background: 'linear-gradient(to bottom, #fef9e7 0%, #fef5e7 100%)',
+              backgroundColor: '#FFF8DC',
               backgroundImage: `
                 repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px),
                 repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)
@@ -1446,9 +1503,42 @@ function Today() {
               ×
             </button>
             <div className="pr-8">
-              <p className="text-sm sm:text-base text-gray-800 leading-relaxed">
+              <p className="text-sm sm:text-base text-gray-800 leading-relaxed mb-4">
                 I wont use this for anything other than messaging you a reminder {'<3'}. I promise
               </p>
+              {!emailSubmitted ? (
+                <form onSubmit={handleEmailSubmit} className="space-y-3" noValidate>
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter your email..."
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submittingEmail || !emailInput.trim()}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
+                  >
+                    {submittingEmail ? 'Submitting...' : 'Submit'}
+                  </button>
+                </form>
+              ) : (
+                <p className="text-sm text-green-600 font-medium">
+                  Thank you! Your email has been saved.
+                </p>
+              )}
             </div>
           </div>
         </div>
