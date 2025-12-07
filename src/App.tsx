@@ -187,7 +187,7 @@ function AppContent({
                 className="inline-flex items-center px-1 sm:px-2 md:px-4 py-1"
               >
                 <img 
-                  src="/rebus-logo.png" 
+                  src="/rebus_logo.png" 
                   alt="Rebus Race" 
                   className="h-8 sm:h-10 md:h-12 w-auto"
                 />
