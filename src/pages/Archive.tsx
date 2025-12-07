@@ -54,6 +54,11 @@ function Archive() {
   const [puzzleAnswer, setPuzzleAnswer] = useState('');
   const [puzzleImage, setPuzzleImage] = useState<File | null>(null);
   const [submittingPuzzle, setSubmittingPuzzle] = useState(false);
+  const [showCreateRebus, setShowCreateRebus] = useState(false);
+  const [rebusImage, setRebusImage] = useState<File | null>(null);
+  const [rebusAnswer, setRebusAnswer] = useState('');
+  const [submittingRebus, setSubmittingRebus] = useState(false);
+  const [rebusSubmitted, setRebusSubmitted] = useState(false);
 
   useEffect(() => {
     loadArchive();
@@ -311,6 +316,128 @@ function Archive() {
     }
   };
 
+  const handleCreateRebusSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!rebusAnswer.trim() && !rebusImage) {
+      alert('Please provide either an answer/clue or upload an image');
+      return;
+    }
+
+    setSubmittingRebus(true);
+    try {
+      const username = getUsername();
+      let imageUrl: string | null = null;
+
+      // Upload image if provided
+      if (rebusImage) {
+        const timestamp = Date.now();
+        const fileExt = rebusImage.name.split('.').pop()?.toLowerCase();
+        
+        // Check if file is JPG (policy only allows JPG)
+        if (fileExt !== 'jpg' && fileExt !== 'jpeg') {
+          alert('Only JPG/JPEG images are allowed. Please convert your image to JPG format.');
+          setSubmittingRebus(false);
+          return;
+        }
+        
+        // Upload to public folder (required by policy)
+        const fileName = `public/rebus-submission-${timestamp}.jpg`;
+
+        console.log('Attempting to upload image:', {
+          fileName,
+          fileSize: rebusImage.size,
+          fileType: rebusImage.type,
+          bucket: 'Image Upload',
+          path: fileName
+        });
+
+        const { error: uploadError, data: uploadData } = await supabase.storage
+          .from('Image Upload')
+          .upload(fileName, rebusImage, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Upload error details:', {
+            message: uploadError.message,
+            statusCode: uploadError.statusCode,
+            error: uploadError
+          });
+          
+          alert(`Failed to upload image: ${uploadError.message || 'Unknown error'}. Please check the console for details and try again.`);
+          setSubmittingRebus(false);
+          return;
+        }
+
+        if (!uploadData) {
+          console.error('Upload succeeded but no data returned');
+          alert('Image upload completed but no data was returned. Please try again.');
+          setSubmittingRebus(false);
+          return;
+        }
+
+        console.log('Image uploaded successfully:', uploadData);
+        
+        // Get the public URL
+        const { data: urlData } = supabase.storage
+          .from('Image Upload')
+          .getPublicUrl(fileName);
+
+        if (!urlData || !urlData.publicUrl) {
+          console.error('Failed to get public URL for uploaded image');
+          alert('Image uploaded but failed to get public URL. Please try again.');
+          setSubmittingRebus(false);
+          return;
+        }
+
+        imageUrl = urlData.publicUrl;
+        console.log('Image URL:', imageUrl);
+      }
+
+      // Save to image_submissions table
+      const submissionData = {
+        username: username || null,
+        image_url: imageUrl,
+        answer: rebusAnswer.trim() || null,
+      };
+      
+      console.log('Saving to database:', submissionData);
+      
+      const { data: insertData, error: dbError } = await supabase
+        .from('image_submissions')
+        .insert(submissionData)
+        .select();
+
+      if (dbError) {
+        console.error('Database error details:', {
+          message: dbError.message,
+          details: dbError.details,
+          hint: dbError.hint,
+          code: dbError.code,
+          error: dbError
+        });
+        alert(`Failed to save rebus submission: ${dbError.message || 'Unknown error'}. Please check the console for details.`);
+        return;
+      }
+
+      console.log('Successfully saved to database:', insertData);
+
+      setRebusSubmitted(true);
+      setRebusImage(null);
+      setRebusAnswer('');
+      setShowCreateRebus(false);
+      alert('Thank you for your rebus submission!');
+    } catch (error) {
+      console.error('Error submitting rebus:', error);
+      alert('Failed to submit rebus. Please try again.');
+    } finally {
+      setSubmittingRebus(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -370,6 +497,14 @@ function Archive() {
               <>
                 {notPlayed.length > 0 && (
                   <div className="mb-6 sm:mb-8">
+                    <div className="mb-3 sm:mb-4 flex justify-center">
+                      <button
+                        onClick={() => setShowCreateRebus(true)}
+                        className="inline-flex items-center gap-2 bg-purple-600 text-white py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
+                      >
+                        <span>✨</span> <span>Create your own rebus</span>
+                      </button>
+                    </div>
                     <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-3 sm:mb-4">
                       Not Played
                     </h2>
@@ -679,6 +814,99 @@ function Archive() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Your Own Rebus Modal */}
+      {showCreateRebus && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowCreateRebus(false)}>
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 sm:p-8 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowCreateRebus(false)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              ×
+            </button>
+            <div className="pr-8">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">
+                Create Your Own Rebus
+              </h3>
+              {!rebusSubmitted ? (
+                <form onSubmit={handleCreateRebusSubmit} className="space-y-4" noValidate>
+                  <div>
+                    <label
+                      htmlFor="rebusAnswer"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Answer or Clue (optional if uploading image)
+                    </label>
+                    <input
+                      type="text"
+                      id="rebusAnswer"
+                      value={rebusAnswer}
+                      onChange={(e) => setRebusAnswer(e.target.value)}
+                      placeholder="Enter the answer or clue..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload Image (optional)
+                    </label>
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <svg className="w-8 h-8 mb-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <p className="mb-2 text-sm text-gray-500">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">JPG/JPEG only (MAX. 10MB)</p>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setRebusImage(file);
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {rebusImage && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-sm text-gray-600">{rebusImage.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setRebusImage(null)}
+                          className="text-sm text-red-600 hover:text-red-800"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submittingRebus || (!rebusAnswer.trim() && !rebusImage)}
+                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
+                  >
+                    {submittingRebus ? 'Submitting...' : 'Submit Rebus'}
+                  </button>
+                </form>
+              ) : (
+                <p className="text-sm text-green-600 font-medium">
+                  Thank you for your rebus submission!
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}

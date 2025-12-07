@@ -644,14 +644,24 @@ function ArchiveDetail() {
       // Upload image if provided
       if (rebusImage) {
         const timestamp = Date.now();
-        const fileExt = rebusImage.name.split('.').pop();
-        const fileName = `rebus-submission-${timestamp}.${fileExt}`;
+        const fileExt = rebusImage.name.split('.').pop()?.toLowerCase();
+        
+        // Check if file is JPG (policy only allows JPG)
+        if (fileExt !== 'jpg' && fileExt !== 'jpeg') {
+          alert('Only JPG/JPEG images are allowed. Please convert your image to JPG format.');
+          setSubmittingRebus(false);
+          return;
+        }
+        
+        // Upload to public folder (required by policy)
+        const fileName = `public/rebus-submission-${timestamp}.jpg`;
 
         console.log('Attempting to upload image:', {
           fileName,
           fileSize: rebusImage.size,
           fileType: rebusImage.type,
-          bucket: 'Image Upload'
+          bucket: 'Image Upload',
+          path: fileName
         });
 
         const { error: uploadError, data: uploadData } = await supabase.storage
@@ -668,25 +678,34 @@ function ArchiveDetail() {
             error: uploadError
           });
           
-          // If bucket doesn't exist or permission issue, still try to save answer/clue if provided
-          if (rebusAnswer.trim()) {
-            console.log('Image upload failed, but saving answer/clue to database...');
-            // Continue to save answer/clue without image
-          } else {
-            alert(`Failed to upload image: ${uploadError.message || 'Unknown error'}. Please check the console for details.`);
-            return;
-          }
-        } else {
-          console.log('Image uploaded successfully:', uploadData);
-          
-          // Get the public URL
-          const { data: urlData } = supabase.storage
-            .from('Image Upload')
-            .getPublicUrl(fileName);
-
-          imageUrl = urlData.publicUrl;
-          console.log('Image URL:', imageUrl);
+          alert(`Failed to upload image: ${uploadError.message || 'Unknown error'}. Please check the console for details and try again.`);
+          setSubmittingRebus(false);
+          return;
         }
+
+        if (!uploadData) {
+          console.error('Upload succeeded but no data returned');
+          alert('Image upload completed but no data was returned. Please try again.');
+          setSubmittingRebus(false);
+          return;
+        }
+
+        console.log('Image uploaded successfully:', uploadData);
+        
+        // Get the public URL
+        const { data: urlData } = supabase.storage
+          .from('Image Upload')
+          .getPublicUrl(fileName);
+
+        if (!urlData || !urlData.publicUrl) {
+          console.error('Failed to get public URL for uploaded image');
+          alert('Image uploaded but failed to get public URL. Please try again.');
+          setSubmittingRebus(false);
+          return;
+        }
+
+        imageUrl = urlData.publicUrl;
+        console.log('Image URL:', imageUrl);
       }
 
       // Save to image_submissions table
@@ -1268,11 +1287,11 @@ function ArchiveDetail() {
                         <p className="mb-2 text-sm text-gray-500">
                           <span className="font-semibold">Click to upload</span> or drag and drop
                         </p>
-                        <p className="text-xs text-gray-500">PNG, JPG, GIF (MAX. 10MB)</p>
+                        <p className="text-xs text-gray-500">JPG/JPEG only (MAX. 10MB)</p>
                       </div>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/jpg"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
