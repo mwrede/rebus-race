@@ -41,6 +41,8 @@ function Today() {
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [userHasEmail, setUserHasEmail] = useState(false);
   const [showPrivacyNote, setShowPrivacyNote] = useState(false);
+  const [showReveal, setShowReveal] = useState(false);
+  const [revealStage, setRevealStage] = useState<'hidden' | 'sliding' | 'expanding' | 'complete'>('hidden');
   const { setTimerActive } = useTimer();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
@@ -765,7 +767,7 @@ function Today() {
     await saveGuess(currentAnswer, isCorrect, currentGuessNumber);
 
     if (isCorrect) {
-      // Correct answer - submit immediately
+      // Correct answer - start reveal animation
       setIsSubmitting(true);
       const endTime = Date.now();
       const timeMs = startTime ? endTime - startTime : 0;
@@ -793,20 +795,35 @@ function Today() {
         if (error) throw error;
 
         setSubmission(data);
-        setSubmitted(true);
         setTimerActive(false); // Re-enable navigation after submission
         clearGameState(); // Clear saved game state after submission
 
-        // Increment win count
-        incrementWin(puzzle.id);
-        // Load ranking and past results
-        await loadRankingAndPastResults(puzzle.id, data.id, timeMs);
-        // Load all-time stats
-        await loadAllTimeStats();
+        // Start reveal animation
+        setShowReveal(true);
+        setRevealStage('sliding');
+        
+        // After sliding animation, expand
+        setTimeout(() => {
+          setRevealStage('expanding');
+        }, 600); // 600ms for sliding
+        
+        // After expansion, show complete and then show results
+        setTimeout(() => {
+          setRevealStage('complete');
+          setTimeout(() => {
+            setSubmitted(true);
+            setIsSubmitting(false);
+            // Increment win count
+            incrementWin(puzzle.id);
+            // Load ranking and past results
+            loadRankingAndPastResults(puzzle.id, data.id, timeMs);
+            // Load all-time stats
+            loadAllTimeStats();
+          }, 500); // Brief pause before showing results
+        }, 1200); // 1200ms total for expansion
       } catch (error) {
         console.error('Error submitting answer:', error);
         alert('Failed to submit answer. Please try again.');
-      } finally {
         setIsSubmitting(false);
       }
     } else {
@@ -883,6 +900,19 @@ function Today() {
     day: 'numeric' 
   });
 
+  // Get reveal image URL from puzzle date
+  const getRevealImageUrl = () => {
+    if (!puzzle) return null;
+    // Parse puzzle date (YYYY-MM-DD format) to MM.DD.YYYY format
+    const dateParts = puzzle.date.split('T')[0].split('-');
+    const year = dateParts[0];
+    const month = dateParts[1];
+    const day = dateParts[2];
+    return `/${month}.${day}.${year}_reveal.png`;
+  };
+
+  const revealImageUrl = getRevealImageUrl();
+
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
       <h1 
@@ -919,14 +949,6 @@ function Today() {
 
       {!submitted && !alreadyPlayed && (
         <>
-          <div className="mb-2 sm:mb-3 text-center">
-            <button
-              onClick={() => setShowCreateRebus(true)}
-              className="inline-flex items-center gap-2 bg-purple-600 text-white py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
-            >
-              <span>✨</span> <span>Create your own rebus</span>
-            </button>
-          </div>
           <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 lg:p-6 mb-2 sm:mb-3 md:mb-4">
             {!isReady ? (
             <div className="text-center py-3 sm:py-4 md:py-6">
@@ -1015,12 +1037,50 @@ function Today() {
                 </div>
               )}
 
-              <div className="mb-1 sm:mb-1.5">
+              <div className="mb-1 sm:mb-1.5 relative">
                 <img
                   src={puzzle.image_url}
                   alt="Rebus puzzle"
                   className="w-full rounded-lg border-2 border-gray-200 max-h-[25vh] sm:max-h-[30vh] object-contain"
                 />
+                {/* Reveal Animation */}
+                {showReveal && revealImageUrl && (
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center z-10"
+                    style={{
+                      transform: revealStage === 'sliding' 
+                        ? 'translateY(100%)' 
+                        : revealStage === 'expanding' 
+                        ? 'translateY(0) scale(1.2)' 
+                        : revealStage === 'complete'
+                        ? 'translateY(0) scale(1)'
+                        : 'translateY(100%)',
+                      transition: revealStage === 'sliding'
+                        ? 'transform 0.6s ease-out'
+                        : revealStage === 'expanding'
+                        ? 'transform 0.6s ease-out'
+                        : revealStage === 'complete'
+                        ? 'transform 0.3s ease-out'
+                        : 'none',
+                    }}
+                  >
+                    <img
+                      src={revealImageUrl}
+                      alt="Reveal"
+                      className="w-full h-full rounded-lg object-contain"
+                      style={{
+                        maxHeight: '25vh',
+                      }}
+                      onError={() => {
+                        // If reveal image doesn't exist, skip animation
+                        setShowReveal(false);
+                        setRevealStage('hidden');
+                        setSubmitted(true);
+                        setIsSubmitting(false);
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-1">
