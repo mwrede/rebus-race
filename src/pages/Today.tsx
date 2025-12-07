@@ -888,7 +888,8 @@ function Today() {
       <h1 
         className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-1 sm:mb-1.5 text-center"
         style={{
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: '"Times New Roman", Times, serif',
+          fontWeight: 'bold',
           textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
           letterSpacing: '0.1em',
           color: '#2563eb',
