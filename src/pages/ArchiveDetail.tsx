@@ -1016,7 +1016,7 @@ function ArchiveDetail() {
 
       {!submitted && !alreadyPlayed && (
         <>
-          <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 mb-2 sm:mb-3">
+        <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 mb-2 sm:mb-3">
           {!isReady ? (
             <div className="text-center py-3 sm:py-4">
               <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3">

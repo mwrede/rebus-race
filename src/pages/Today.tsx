@@ -919,7 +919,7 @@ function Today() {
 
       {!submitted && !alreadyPlayed && (
         <>
-          <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 lg:p-6 mb-2 sm:mb-3 md:mb-4">
+        <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 lg:p-6 mb-2 sm:mb-3 md:mb-4">
           {!isReady ? (
             <div className="text-center py-3 sm:py-4 md:py-6">
               <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 md:mb-4">
