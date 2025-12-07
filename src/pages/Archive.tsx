@@ -552,31 +552,31 @@ function Archive() {
                                     ⏸️ Paused
                                   </span>
                                 )}
-                                {isJuliaPuzzle && (
-                                  <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                    julia
-                                  </span>
+                            {isJuliaPuzzle && (
+                                <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                  julia
+                                </span>
                                 )}
                               </div>
-                              <div className="text-center">
-                                <div className="text-sm sm:text-base font-semibold mb-2 text-gray-900">
-                                  {dateStr}
-                                </div>
-                                <div className="space-y-0.5 mb-1">
+                            <div className="text-center">
+                              <div className="text-sm sm:text-base font-semibold mb-2 text-gray-900">
+                                {dateStr}
+                              </div>
+                              <div className="space-y-0.5 mb-1">
                                   <div className="text-sm sm:text-base font-medium text-blue-600">
                                     {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'play' : 'plays'} • {puzzle.successRate !== null ? `${puzzle.successRate.toFixed(1)}% correct` : '—'}
                                   </div>
-                                  {puzzle.averageGuesses !== null && (
-                                    <div className="text-[10px] sm:text-xs font-medium text-gray-600">
-                                      Avg {puzzle.averageGuesses.toFixed(1)} guesses
-                                    </div>
-                                  )}
-                                  {puzzle.averageTime !== null && (
-                                    <div className="text-[10px] sm:text-xs font-medium text-gray-600">
-                                      Avg {(puzzle.averageTime / 1000).toFixed(2)}s
-                                    </div>
-                                  )}
-                                </div>
+                                {puzzle.averageGuesses !== null && (
+                                  <div className="text-[10px] sm:text-xs font-medium text-gray-600">
+                                    Avg {puzzle.averageGuesses.toFixed(1)} guesses
+                                  </div>
+                                )}
+                                {puzzle.averageTime !== null && (
+                                  <div className="text-[10px] sm:text-xs font-medium text-gray-600">
+                                    Avg {(puzzle.averageTime / 1000).toFixed(2)}s
+                                  </div>
+                                )}
+                                  </div>
                               </div>
                             </div>
                           </Link>
@@ -644,47 +644,47 @@ function Archive() {
                               }}
                             >
                               <div className="bg-white rounded-lg h-full p-3 sm:p-4 relative">
-                                <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
+                              <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex flex-col gap-1">
                                   {isPaused && (
                                     <span className="text-[9px] sm:text-[10px] font-semibold text-orange-700 bg-orange-200 px-1.5 sm:px-2 py-0.5 rounded">
                                       ⏸️ Paused
                                     </span>
                                   )}
-                                  {isPlayed && (
-                                    <span className="text-[9px] sm:text-[10px] font-semibold text-gray-600 bg-gray-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                      Already played
-                                    </span>
-                                  )}
-                                  {isJuliaPuzzle && (
-                                    <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
-                                      julia
-                                    </span>
-                                  )}
+                                {isPlayed && (
+                                  <span className="text-[9px] sm:text-[10px] font-semibold text-gray-600 bg-gray-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                    Already played
+                                  </span>
+                                )}
+                                {isJuliaPuzzle && (
+                                  <span className="text-[9px] sm:text-[10px] font-semibold text-purple-700 bg-purple-200 px-1.5 sm:px-2 py-0.5 rounded">
+                                    julia
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-center">
+                                <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? 'text-gray-600' : 'text-gray-900'}`}>
+                                  {dateStr}
                                 </div>
-                                <div className="text-center">
-                                  <div className={`text-sm sm:text-base font-semibold mb-2 ${isPlayed ? 'text-gray-600' : 'text-gray-900'}`}>
-                                    {dateStr}
-                                  </div>
-                                  <div className="space-y-0.5 mb-1">
+                                <div className="space-y-0.5 mb-1">
                                     <div className={`text-sm sm:text-base font-medium ${isPlayed ? 'text-blue-500' : 'text-blue-600'}`}>
                                       {puzzle.totalPlayers} {puzzle.totalPlayers === 1 ? 'play' : 'plays'} • {puzzle.successRate !== null ? `${puzzle.successRate.toFixed(1)}% correct` : '—'}
                                     </div>
-                                    {puzzle.averageGuesses !== null && (
-                                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
-                                        Avg {puzzle.averageGuesses.toFixed(1)} guesses
-                                      </div>
-                                    )}
-                                    {puzzle.averageTime !== null && (
-                                      <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
-                                        Avg {(puzzle.averageTime / 1000).toFixed(2)}s
-                                      </div>
-                                    )}
-                                  </div>
-                                  {isPlayed && playedInfo && (
-                                    <div className="text-[10px] sm:text-xs font-medium text-gray-600 mt-1 pt-1 border-t border-gray-200">
-                                      <div>You: {playedInfo.guess_count !== null ? `${playedInfo.guess_count} guesses` : '—'} • {(playedInfo.time_ms / 1000).toFixed(2)}s</div>
+                                  {puzzle.averageGuesses !== null && (
+                                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
+                                      Avg {puzzle.averageGuesses.toFixed(1)} guesses
                                     </div>
                                   )}
+                                  {puzzle.averageTime !== null && (
+                                    <div className={`text-[10px] sm:text-xs font-medium ${isPlayed ? 'text-gray-500' : 'text-gray-600'}`}>
+                                      Avg {(puzzle.averageTime / 1000).toFixed(2)}s
+                                    </div>
+                                  )}
+                                </div>
+                                {isPlayed && playedInfo && (
+                                  <div className="text-[10px] sm:text-xs font-medium text-gray-600 mt-1 pt-1 border-t border-gray-200">
+                                    <div>You: {playedInfo.guess_count !== null ? `${playedInfo.guess_count} guesses` : '—'} • {(playedInfo.time_ms / 1000).toFixed(2)}s</div>
+                                  </div>
+                                )}
                                 </div>
                               </div>
                             </Link>

@@ -110,10 +110,10 @@ function ArchiveDetail() {
     }
     setAnonId(anonIdValue);
 
-      // Load puzzle using the ID from URL params
-      if (id) {
-        loadPuzzle(id);
-      }
+    // Load puzzle using the ID from URL params
+    if (id) {
+      loadPuzzle(id);
+    }
       checkUserEmail();
 
     // Save game state before page unload (refresh/close)
@@ -1016,16 +1016,8 @@ function ArchiveDetail() {
 
       {!submitted && !alreadyPlayed && (
         <>
-          <div className="mb-2 sm:mb-3 text-center">
-            <button
-              onClick={() => setShowCreateRebus(true)}
-              className="inline-flex items-center gap-2 bg-purple-600 text-white py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
-            >
-              <span>✨</span> <span>Create your own rebus</span>
-            </button>
-          </div>
           <div className="bg-white rounded-lg shadow-md p-2 sm:p-3 md:p-4 mb-2 sm:mb-3">
-            {!isReady ? (
+          {!isReady ? (
             <div className="text-center py-3 sm:py-4">
               <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3">
                 Are you ready?
