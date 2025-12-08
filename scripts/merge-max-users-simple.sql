@@ -72,13 +72,28 @@ BEGIN
   RAISE NOTICE 'Deleted duplicate user records';
 
   -- Step 4: Update other tables
-  -- Update clue_suggestions
-  UPDATE clue_suggestions
-  SET 
-    anon_id = primary_anon_id,
-    username = max_username
-  WHERE anon_id = ANY(all_max_anon_ids)
-    AND anon_id != primary_anon_id;
+  -- Update clue_suggestions (only if anon_id column exists)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'clue_suggestions' AND column_name = 'anon_id'
+  ) THEN
+    UPDATE clue_suggestions
+    SET 
+      anon_id = primary_anon_id,
+      username = max_username
+    WHERE anon_id = ANY(all_max_anon_ids)
+      AND anon_id != primary_anon_id;
+  END IF;
+  
+  -- Update clue_suggestions username (if table exists but no anon_id column)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables WHERE table_name = 'clue_suggestions'
+  ) THEN
+    UPDATE clue_suggestions
+    SET username = max_username
+    WHERE LOWER(TRIM(username)) = LOWER(max_username)
+      AND username != max_username;
+  END IF;
 
   -- Update image_submissions
   UPDATE image_submissions
