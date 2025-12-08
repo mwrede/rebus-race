@@ -74,8 +74,9 @@ function Today() {
         // Only restore if it's for the same puzzle and not too old (within 24 hours)
         const hoursSinceSave = (Date.now() - state.timestamp) / (1000 * 60 * 60);
         if (state.puzzleId === puzzleId && state.isReady && hoursSinceSave < 24) {
-          setWrongGuesses(state.wrongGuesses || []);
-          setGuessCount(state.guessCount || 0);
+          const restoredWrongGuesses = state.wrongGuesses || [];
+          setWrongGuesses(restoredWrongGuesses);
+          setGuessCount(restoredWrongGuesses.length); // Ensure guessCount matches wrongGuesses.length
           setHintUsed(state.hintUsed || false);
           setAnswer(state.answer || '');
           setIsReady(true);
@@ -811,12 +812,14 @@ function Today() {
       }
     } else {
       // Wrong answer - add to wrong guesses
-      setWrongGuesses((prev) => [...prev, currentAnswer]);
-      setGuessCount((prev) => prev + 1);
+      const newWrongGuesses = [...wrongGuesses, currentAnswer];
+      setWrongGuesses(newWrongGuesses);
+      const newGuessCount = newWrongGuesses.length;
+      setGuessCount(newGuessCount);
       setAnswer(''); // Clear input for next guess
 
       // If they've used all 5 guesses, submit as incorrect
-      if (guessCount + 1 >= MAX_GUESSES) {
+      if (newGuessCount >= MAX_GUESSES) {
         setIsSubmitting(true);
         const endTime = Date.now();
         const timeMs = startTime ? endTime - startTime : 0;
@@ -832,7 +835,7 @@ function Today() {
               is_correct: false,
               time_ms: timeMs,
               username: username || null,
-              guess_count: guessCount + 1,
+              guess_count: newGuessCount,
             })
             .select()
             .single();
@@ -953,7 +956,7 @@ function Today() {
                   {timeElapsed >= MAX_TIME_SECONDS ? "Time's up!" : 'Time elapsed'}
                 </div>
                 <div className="text-[8px] sm:text-[9px] text-gray-600 mt-0.5">
-                  {MAX_GUESSES - guessCount} {MAX_GUESSES - guessCount === 1 ? 'guess' : 'guesses'} remaining
+                  {MAX_GUESSES - wrongGuesses.length} {MAX_GUESSES - wrongGuesses.length === 1 ? 'guess' : 'guesses'} remaining
                 </div>
               </div>
 
@@ -984,7 +987,7 @@ function Today() {
               )}
 
               {/* Hint button - appears after 4 guesses */}
-              {guessCount >= 4 && puzzle?.hint && !hintUsed && !submitted && (
+              {wrongGuesses.length >= 4 && puzzle?.hint && !hintUsed && !submitted && (
                 <div className="mb-2">
                   <button
                     onClick={handleHintClick}
@@ -1028,7 +1031,7 @@ function Today() {
                     id="answer"
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
-                    disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES}
+                    disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || wrongGuesses.length >= MAX_GUESSES}
                     className="w-full px-2 py-1 text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                     placeholder="Enter your answer..."
                     autoFocus
@@ -1037,7 +1040,7 @@ function Today() {
                 </div>
                 <button
                   type="submit"
-                  disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || guessCount >= MAX_GUESSES || !answer.trim() || isSubmitting}
+                  disabled={submitted || timeElapsed >= MAX_TIME_SECONDS || wrongGuesses.length >= MAX_GUESSES || !answer.trim() || isSubmitting}
                   className="w-full bg-blue-600 text-white py-1.5 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-xs sm:text-sm"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit Answer'}
@@ -1087,10 +1090,6 @@ function Today() {
             style={{ 
               fontFamily: 'Georgia, serif',
               backgroundColor: '#FFFFFF',
-              backgroundImage: `
-                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px),
-                repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)
-              `,
               boxShadow: '0 20px 60px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(0,0,0,0.1)',
               borderRadius: '8px',
               border: '1px solid rgba(139, 69, 19, 0.2)',
