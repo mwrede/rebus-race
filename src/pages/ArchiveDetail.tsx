@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Puzzle, Submission } from '../types';
-import { getUsername } from '../lib/username';
+import { getUsername } from '../lib/auth';
 import { useTimer } from '../contexts/TimerContext';
 
 function ArchiveDetail() {

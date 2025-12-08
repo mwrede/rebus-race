@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Puzzle } from '../types';
-import { getUsername } from '../lib/username';
+import { getUsername } from '../lib/auth';
 
 interface PuzzleWithStats extends Puzzle {
   successRate: number | null;

@@ -4,8 +4,9 @@ import Today from './pages/Today';
 import Leaderboard from './pages/Leaderboard';
 import Archive from './pages/Archive';
 import ArchiveDetail from './pages/ArchiveDetail';
-import { getUsername, hasUsername } from './lib/username';
+import { getUsername, hasUsername } from './lib/auth';
 import UsernamePrompt from './components/UsernamePrompt';
+import UserMenu from './components/UserMenu';
 import { supabase } from './lib/supabase';
 import { Submission } from './types';
 import { TimerProvider, useTimer } from './contexts/TimerContext';
@@ -145,12 +146,23 @@ function App() {
     setShowUsernamePrompt(false);
   };
 
+  const handleLogout = () => {
+    setUsername(null);
+    setShowUsernamePrompt(true);
+  };
+
+  const handleChangeUsername = () => {
+    setShowUsernamePrompt(true);
+  };
+
   return (
     <BrowserRouter>
       <TimerProvider>
         <AppContent
           showUsernamePrompt={showUsernamePrompt}
           handleUsernameComplete={handleUsernameComplete}
+          handleLogout={handleLogout}
+          handleChangeUsername={handleChangeUsername}
           username={username}
           streak={streak}
         />
@@ -162,11 +174,15 @@ function App() {
 function AppContent({
   showUsernamePrompt,
   handleUsernameComplete,
+  handleLogout,
+  handleChangeUsername,
   username,
   streak,
 }: {
   showUsernamePrompt: boolean;
   handleUsernameComplete: (username: string) => void;
+  handleLogout: () => void;
+  handleChangeUsername: () => void;
   username: string | null;
   streak: number;
 }) {
@@ -193,22 +209,24 @@ function AppContent({
                 />
               </Link>
               <div className="flex items-center space-x-0.5 sm:space-x-1 md:space-x-2">
-                {username && (
-                  <div className="text-[10px] sm:text-xs md:text-sm font-semibold text-blue-600 px-0.5 sm:px-1 md:px-2 hidden md:block truncate max-w-[60px] sm:max-w-none">
-                    {username}
-                  </div>
-                )}
-                {streak > 0 && (
-                  <div className="text-[10px] sm:text-xs md:text-sm font-semibold text-orange-600 px-0.5 sm:px-1 md:px-2">
-                    🔥 {streak}
-                  </div>
-                )}
                 <Link
                   to="/today"
                   className="inline-flex items-center px-1 sm:px-2 md:px-3 py-1 text-[10px] sm:text-xs md:text-sm font-medium text-gray-700 hover:text-gray-900"
                 >
                   Today
                 </Link>
+                {username && (
+                  <UserMenu
+                    username={username}
+                    onLogout={handleLogout}
+                    onChangeUsername={handleChangeUsername}
+                  />
+                )}
+                {streak > 0 && (
+                  <div className="text-[10px] sm:text-xs md:text-sm font-semibold text-orange-600 px-0.5 sm:px-1 md:px-2">
+                    🔥 {streak}
+                  </div>
+                )}
                 <Link
                   to="/leaderboard"
                   className="inline-flex items-center justify-center px-1 sm:px-2 md:px-3 py-1 text-lg sm:text-xl md:text-2xl text-gray-700 hover:text-gray-900"
