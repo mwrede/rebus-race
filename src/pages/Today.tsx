@@ -877,22 +877,27 @@ function Today() {
     );
   }
 
-  // Get today's date in a nice format
+  // Get today's date in a nice format - just "December 7th"
   const today = new Date();
-  const dateStr = today.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+  const month = today.toLocaleDateString('en-US', { month: 'long' });
+  const day = today.getDate();
+  const getOrdinalSuffix = (num: number) => {
+    const j = num % 10;
+    const k = num % 100;
+    if (j === 1 && k !== 11) return num + 'st';
+    if (j === 2 && k !== 12) return num + 'nd';
+    if (j === 3 && k !== 13) return num + 'rd';
+    return num + 'th';
+  };
+  const dateStr = `${month} ${getOrdinalSuffix(day)}`;
 
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
       <h1 
-        className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-1 sm:mb-1.5 text-center"
+        className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-1 sm:mb-1.5 text-center"
         style={{
-          fontFamily: '"Arial Rounded MT Bold", "Helvetica Rounded", Arial, sans-serif',
-          fontWeight: 'bold',
+          fontFamily: '"Luckiest Guy", cursive',
+          fontWeight: 'normal',
           color: '#1e3a8a',
           marginTop: '0',
           paddingTop: '0.5rem'
