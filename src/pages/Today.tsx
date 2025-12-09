@@ -581,9 +581,15 @@ function Today() {
 
       console.log('All-time leaderboard entries calculated:', entries.length, 'anonId:', anonId);
 
-      // Find user's rank
-      const userEntry = entries.findIndex((entry) => entry.anon_id === anonId);
-      console.log('User entry index:', userEntry);
+      // Find user's rank - try by anon_id first, then by username as fallback
+      const currentUsername = getUsername();
+      let userEntry = entries.findIndex((entry) => entry.anon_id === anonId);
+      if (userEntry === -1 && currentUsername) {
+        // Fallback: try to find by username
+        userEntry = entries.findIndex((entry) => entry.username === currentUsername);
+        console.log('User entry not found by anon_id, trying username:', currentUsername, 'found at index:', userEntry);
+      }
+      console.log('User entry index:', userEntry, 'anonId:', anonId, 'username:', currentUsername, 'total entries:', entries.length);
       if (userEntry !== -1) {
         const userRank = userEntry + 1;
         setAllTimeRank(userRank);
@@ -604,6 +610,7 @@ function Today() {
               streak: entry.streak,
             });
           });
+          console.log('User in top 3, showing top 3 only:', miniLeaderboard.length);
         } else {
           // User is not in top 3, show top 3 + user row
           const top3 = entries.slice(0, 3);
@@ -626,6 +633,7 @@ function Today() {
             averageTime: user.averageTime,
             streak: user.streak,
           });
+          console.log('User not in top 3, showing top 3 + user row:', miniLeaderboard.length, 'user rank:', userRank);
         }
         
         setAllTimeLeaderboardEntries(miniLeaderboard);
