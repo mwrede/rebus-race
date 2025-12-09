@@ -1196,7 +1196,7 @@ function Today() {
               </div>
             </div>
           </div>
-          <div className="rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 bg-white">
+          <div className="rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 bg-white opacity-75">
             <div className="text-center mb-1.5 sm:mb-2 md:mb-3">
               <div className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 mb-1">
                 Your Result from Today
@@ -1286,7 +1286,13 @@ function Today() {
                     )}
 
                     {/* All-time leaderboard */}
-                    {allTimeLeaderboardEntries.length > 0 && (
+                    {loadingStats ? (
+                      <div className="mt-3 sm:mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="text-xs sm:text-sm text-gray-600 text-center">
+                          Loading all-time leaderboard...
+                        </div>
+                      </div>
+                    ) : allTimeLeaderboardEntries.length > 0 ? (
                       <div className="mt-3 sm:mt-4">
                         <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                           <div className="text-sm sm:text-base font-bold text-purple-700 mb-2">
@@ -1322,6 +1328,70 @@ function Today() {
                               </tbody>
                             </table>
                           </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 sm:mt-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="text-sm sm:text-base font-bold text-purple-700 mb-2">
+                          All-Time Leaderboard
+                        </div>
+                        <div className="text-xs sm:text-sm text-gray-600 text-center">
+                          No all-time data available yet
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+                      <button
+                        onClick={() => {
+                          if (previousSubmission) {
+                            const timeSeconds = (previousSubmission.time_ms / 1000).toFixed(2);
+                            const guessEmojis = getGuessEmojis(previousSubmission.guess_count || 0, previousSubmission.is_correct);
+                            const rankText = previousSubmission.is_correct && rank ? ` Rank #${rank}` : '';
+                            const today = new Date();
+                            const shareText = `Rebus Race ${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n\n${guessEmojis}\n\nTime: ${timeSeconds}s${rankText}\n\n${window.location.origin}`;
+
+                            navigator.clipboard.writeText(shareText).then(() => {
+                              alert('Result copied to clipboard!');
+                            }).catch(() => {
+                              prompt('Copy this text:', shareText);
+                            });
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"
+                      >
+                        <span>📤</span> <span>Share Result</span>
+                      </button>
+                      <Link
+                        to="/leaderboard"
+                        className="inline-flex items-center gap-1 sm:gap-2 bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
+                      >
+                        <span>🏆</span> <span>Go to Leaderboard</span>
+                      </Link>
+                      <Link
+                        to="/archive"
+                        className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+                      >
+                        <span>📚</span> <span>Play more</span>
+                      </Link>
+                    </div>
+                    {!rebusSubmitted && (
+                      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+                        <div className="text-center">
+                          <button
+                            onClick={() => setShowCreateRebus(true)}
+                            className="inline-flex items-center gap-2 bg-purple-600 text-white py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm"
+                          >
+                            <span>✨</span> <span>Create your own rebus</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {rebusSubmitted && (
+                      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
+                        <div className="text-center">
+                          <p className="text-xs sm:text-sm text-green-600">Thank you for your rebus submission!</p>
                         </div>
                       </div>
                     )}
@@ -1875,7 +1945,7 @@ function Today() {
               </button>
               <Link
                 to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
               >
                 <span>🏆</span> <span>Go to Leaderboard</span>
               </Link>
@@ -1915,70 +1985,6 @@ function Today() {
               </p>
             </div>
           )}
-          {alreadyPlayed && previousSubmission && previousSubmission.is_correct && (
-            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
-              <button
-                onClick={() => {
-                  if (previousSubmission) {
-                    const timeSeconds = (previousSubmission.time_ms / 1000).toFixed(2);
-                    const guessEmojis = getGuessEmojis(previousSubmission.guess_count || 0, previousSubmission.is_correct);
-                    const rankText = previousSubmission.is_correct && rank ? ` Rank #${rank}` : '';
-                    const today = new Date();
-                    const shareText = `Rebus Race ${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n\n${guessEmojis}\n\nTime: ${timeSeconds}s${rankText}\n\n${window.location.origin}`;
-
-                    navigator.clipboard.writeText(shareText).then(() => {
-                      alert('Result copied to clipboard!');
-                    }).catch(() => {
-                      prompt('Copy this text:', shareText);
-                    });
-                  }
-                }}
-                className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"
-              >
-                <span>📤</span> <span>Share Result</span>
-              </button>
-              <Link
-                to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
-              >
-                <span>🏆</span> <span>Go to Leaderboard</span>
-              </Link>
-              <Link
-                to="/archive"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
-              >
-                <span>📚</span> <span>Play more</span>
-              </Link>
-            </div>
-          )}
-          {alreadyPlayed && previousSubmission && previousSubmission.is_correct && (
-            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <div className="text-center">
-                {!rebusSubmitted ? (
-                  <button
-                    onClick={() => setShowCreateRebus(true)}
-                    className="inline-flex items-center gap-2 bg-purple-600 text-white py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm"
-                  >
-                    <span>✨</span> <span>Create your own rebus</span>
-                  </button>
-                ) : (
-                  <p className="text-xs sm:text-sm text-green-600">Thank you for your rebus submission!</p>
-                )}
-              </div>
-            </div>
-          )}
-          {alreadyPlayed && previousSubmission && previousSubmission.is_correct && !userHasEmail && (
-            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-300">
-              <p className="text-xs sm:text-sm text-gray-700 mb-2 text-center">
-                <span 
-                  className="italic cursor-pointer underline hover:text-blue-600"
-                  onClick={() => setShowPrivacyNote(true)}
-                >
-                  Do you want a daily reminder?
-                </span>
-              </p>
-            </div>
-          )}
           {alreadyPlayed && previousSubmission && !previousSubmission.is_correct && (
             <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
               <button
@@ -2003,7 +2009,7 @@ function Today() {
               </button>
               <Link
                 to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
               >
                 <span>🏆</span> <span>Go to Leaderboard</span>
               </Link>
@@ -2054,7 +2060,7 @@ function Today() {
               </button>
               <Link
                 to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-yellow-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-yellow-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
               >
                 <span>🏆</span> <span>Go to Leaderboard</span>
               </Link>
