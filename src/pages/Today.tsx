@@ -340,11 +340,13 @@ function Today() {
             .maybeSingle();
 
           if (existingSubmission && !submissionError) {
+            // Set all states IMMEDIATELY to prevent showing puzzle form
             setAlreadyPlayed(true);
             setPreviousSubmission(existingSubmission);
             setSubmitted(true);
             setSubmission(existingSubmission);
             setTimerActive(false); // Show nav bar on reveal/results page
+            setIsReady(false); // Make sure ready state is false
             clearGameState(); // Clear any saved game state since they already played
             
             // Load ranking and past results for the previous submission
@@ -364,24 +366,30 @@ function Today() {
             // Try to restore saved game state
             const restored = loadGameState(data.id);
             if (!restored) {
-            // Don't start timer yet - wait for user to click "ready"
-            setIsReady(false);
+              // Don't start timer yet - wait for user to click "ready"
+              setIsReady(false);
+              setTimerActive(false); // Make sure nav bar is visible when not playing
+            } else {
+              // If game state was restored, timer will be set by loadGameState
             }
           }
         } else {
           // Try to restore saved game state
           const restored = loadGameState(data.id);
           if (!restored) {
-          // Don't start timer yet - wait for user to click "ready"
-          setIsReady(false);
+            // Don't start timer yet - wait for user to click "ready"
+            setIsReady(false);
+            setTimerActive(false); // Make sure nav bar is visible when not playing
           }
         }
       } else {
         // No puzzle for today
         setPuzzle(null);
+        setTimerActive(false); // Show nav bar when no puzzle
       }
     } catch (error) {
       console.error('Error loading puzzle:', error);
+      setTimerActive(false); // Show nav bar on error
     } finally {
       setLoading(false);
     }
@@ -1138,6 +1146,9 @@ function Today() {
           console.log('Submission already exists, skipping duplicate');
           setIsSubmitting(false);
           setSubmitted(true);
+          setAlreadyPlayed(true);
+          setPreviousSubmission(existingSubmission);
+          setTimerActive(false); // Show nav bar on reveal/results page
           // Load the existing submission data
           const { data: existingData } = await supabase
             .from('submissions')
@@ -1229,6 +1240,8 @@ function Today() {
                   console.log('Submission already exists, skipping duplicate');
                   setIsSubmitting(false);
                   setSubmitted(true);
+                  setAlreadyPlayed(true);
+                  setPreviousSubmission(existingSubmission);
                   setTimerActive(false); // Show nav bar on reveal/results page
                   // Load the existing submission data
                   const { data: existingData } = await supabase
