@@ -1311,23 +1311,6 @@ function Today() {
                 {incorrectPercentage.toFixed(1)}% of players also got it wrong
               </div>
             )}
-            {/* Reveal image with fade-in animation */}
-            <div className="mb-2 sm:mb-3 md:mb-4">
-              <img
-                src={revealImagePath}
-                alt="Reveal"
-                className="w-full rounded-lg border-2 border-gray-300 max-h-[40vh] sm:max-h-[50vh] object-contain opacity-0"
-                onLoad={(e) => {
-                  // Trigger fade-in when image loads
-                  e.currentTarget.style.transition = 'opacity 1s ease-in';
-                  e.currentTarget.style.opacity = '1';
-                }}
-                onError={(e) => {
-                  // Hide image if it doesn't exist
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
             {previousSubmission.is_correct && (
               <>
                 {loadingStats ? (
@@ -1621,6 +1604,37 @@ function Today() {
                 </div>
               )}
 
+              {/* Reveal image with fade-in and fade-out animation - shown when submitted */}
+              {submitted && submission && (
+                <div className="mb-2 sm:mb-3">
+                  <img
+                    src={revealImagePath}
+                    alt="Reveal"
+                    className="w-full rounded-lg border-2 border-gray-300 max-h-[40vh] sm:max-h-[50vh] object-contain opacity-0"
+                    onLoad={(e) => {
+                      const img = e.currentTarget;
+                      // Trigger fade-in when image loads
+                      img.style.transition = 'opacity 1s ease-in';
+                      img.style.opacity = '1';
+                      
+                      // Fade out after 5 seconds
+                      setTimeout(() => {
+                        img.style.transition = 'opacity 1s ease-out';
+                        img.style.opacity = '0';
+                        // Hide completely after fade-out completes
+                        setTimeout(() => {
+                          img.style.display = 'none';
+                        }, 1000);
+                      }, 5000);
+                    }}
+                    onError={(e) => {
+                      // Hide image if it doesn't exist
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
+              
               <div className="mb-1 sm:mb-1.5">
                 <img
                   src={puzzle.image_url}
@@ -1857,42 +1871,6 @@ function Today() {
                 {incorrectPercentage.toFixed(1)}% of players also got it wrong
               </div>
             )}
-            {/* Reveal image with fade-in and fade-out animation */}
-            <div className="mb-2 sm:mb-3 md:mb-4 animate-fade-in">
-              <img
-                src={revealImagePath}
-                alt="Reveal"
-                className="w-full rounded-lg border-2 border-gray-300 max-h-[40vh] sm:max-h-[50vh] object-contain opacity-0"
-                onLoad={(e) => {
-                  const img = e.currentTarget;
-                  // Trigger fade-in when image loads
-                  img.style.transition = 'opacity 1s ease-in';
-                  img.style.opacity = '1';
-                  
-                  // Fade out after 6 seconds
-                  setTimeout(() => {
-                    img.style.transition = 'opacity 1s ease-out';
-                    img.style.opacity = '0';
-                    // Hide completely after fade-out completes
-                    setTimeout(() => {
-                      img.style.display = 'none';
-                    }, 1000);
-                  }, 6000);
-                }}
-                onError={(e) => {
-                  // Hide image if it doesn't exist
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-            {/* Greyed out puzzle image */}
-            <div className="mb-2 sm:mb-3 md:mb-4">
-              <img
-                src={puzzle?.image_url}
-                alt="Rebus puzzle"
-                className="w-full rounded-lg border-2 border-gray-300 opacity-60"
-              />
-            </div>
             {submission.is_correct && (
               <>
                 {loadingStats ? (
