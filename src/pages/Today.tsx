@@ -470,27 +470,41 @@ function Today() {
         (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
       );
 
-      // Group submissions by anon_id for streak calculation
-      const userSubmissionsForStreak = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
+      // Group submissions by (anon_id, puzzle_id) to get the most recent submission for each puzzle per user
+      // Since we ordered by created_at DESC, the first submission we see for each (anon_id, puzzle_id) is the most recent
+      const submissionKeyMap = new Map<string, { anon_id: string; puzzle_id: string; is_correct: boolean; username: string | null }>();
       
       dailyAllSubmissions.forEach((s: Submission) => {
         if (!s.anon_id) return;
         
-        if (!userSubmissionsForStreak.has(s.anon_id)) {
-          userSubmissionsForStreak.set(s.anon_id, {
+        const key = `${s.anon_id}:${s.puzzle_id}`;
+        // Only keep the first (most recent) submission for each (anon_id, puzzle_id) pair
+        if (!submissionKeyMap.has(key)) {
+          submissionKeyMap.set(key, {
+            anon_id: s.anon_id,
+            puzzle_id: s.puzzle_id,
+            is_correct: s.is_correct,
             username: s.username || null,
+          });
+        }
+      });
+
+      // Group by anon_id for streak calculation
+      const userSubmissionsForStreak = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
+      
+      submissionKeyMap.forEach((submission) => {
+        if (!userSubmissionsForStreak.has(submission.anon_id)) {
+          userSubmissionsForStreak.set(submission.anon_id, {
+            username: submission.username,
             submissions: new Map(),
           });
         }
         
-        const userData = userSubmissionsForStreak.get(s.anon_id)!;
-        // Only keep the most recent submission for each puzzle
-        if (!userData.submissions.has(s.puzzle_id)) {
-          userData.submissions.set(s.puzzle_id, s.is_correct);
-        }
+        const userData = userSubmissionsForStreak.get(submission.anon_id)!;
+        userData.submissions.set(submission.puzzle_id, submission.is_correct);
         // Update username if available
-        if (s.username) {
-          userData.username = s.username;
+        if (submission.username) {
+          userData.username = submission.username;
         }
       });
 
@@ -1810,27 +1824,29 @@ function Today() {
                         <div className="text-sm sm:text-base font-bold text-blue-700 mb-2">
                           Today's Leaderboard
                         </div>
-                        <table className="w-full text-xs sm:text-sm">
-                          <thead>
-                            <tr className="border-b border-blue-200">
-                              <th className="text-left py-1 px-2 font-semibold text-blue-700">Rank</th>
-                              <th className="text-left py-1 px-2 font-semibold text-blue-700">Username</th>
-                              <th className="text-right py-1 px-2 font-semibold text-blue-700">Time</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {todayLeaderboardEntries.map((entry, idx) => (
-                              <tr
-                                key={idx}
-                                className={entry.rank === rank ? 'bg-blue-100 font-semibold' : ''}
-                              >
-                                <td className="py-1 px-2">{entry.rank}</td>
-                                <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
-                                <td className="py-1 px-2 text-right">{(entry.time / 1000).toFixed(2)}s</td>
+                        <div className="overflow-x-auto overflow-y-auto max-h-[120px]">
+                          <table className="w-full text-xs sm:text-sm">
+                            <thead className="sticky top-0 bg-blue-50">
+                              <tr className="border-b border-blue-200">
+                                <th className="text-left py-1 px-2 font-semibold text-blue-700">Rank</th>
+                                <th className="text-left py-1 px-2 font-semibold text-blue-700">Username</th>
+                                <th className="text-right py-1 px-2 font-semibold text-blue-700">Time</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {todayLeaderboardEntries.map((entry, idx) => (
+                                <tr
+                                  key={idx}
+                                  className={entry.rank === rank ? 'bg-blue-100 font-semibold' : ''}
+                                >
+                                  <td className="py-1 px-2">{entry.rank}</td>
+                                  <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
+                                  <td className="py-1 px-2 text-right">{(entry.time / 1000).toFixed(2)}s</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )}
 
