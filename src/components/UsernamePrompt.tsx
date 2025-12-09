@@ -52,6 +52,51 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
       });
       const googleUserData = await response.json();
 
+      // Check if this Google email already exists in the database
+      const { data: existingUser, error: lookupError } = await supabase
+        .from('users')
+        .select('anon_id, username, google_id, google_email')
+        .eq('google_email', googleUserData.email)
+        .single();
+
+      if (lookupError && lookupError.code !== 'PGRST116') {
+        // PGRST116 is "not found" which is fine, but other errors are not
+        throw lookupError;
+      }
+
+      // If user exists with this Google email, auto-login them
+      if (existingUser && existingUser.username) {
+        // Store Google user info
+        setGoogleUser({
+          sub: googleUserData.sub,
+          email: googleUserData.email,
+          name: googleUserData.name,
+          picture: googleUserData.picture,
+        });
+
+        // Set the existing anon_id and username
+        setAnonId(existingUser.anon_id);
+        localStorage.setItem('rebus_anon_id', existingUser.anon_id);
+        setUsername(existingUser.username);
+
+        // Update Google info in case it changed
+        await supabase
+          .from('users')
+          .update({
+            google_id: googleUserData.sub,
+            google_email: googleUserData.email,
+            google_name: googleUserData.name,
+            google_picture: googleUserData.picture,
+            email: googleUserData.email,
+          })
+          .eq('anon_id', existingUser.anon_id);
+
+        // Auto-complete with existing username
+        onComplete(existingUser.username);
+        return;
+      }
+
+      // New user - proceed with normal flow
       // Store Google user info
       setGoogleUser({
         sub: googleUserData.sub,
@@ -110,6 +155,27 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
   });
 
   const saveUsername = async (username: string) => {
+    const googleUser = getGoogleUser();
+    
+    // Check if this Google email already has a username
+    if (googleUser?.email) {
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('anon_id, username')
+        .eq('google_email', googleUser.email)
+        .not('username', 'is', null)
+        .single();
+
+      if (existingUser && existingUser.username) {
+        // This Google email already has a username - use that account
+        setAnonId(existingUser.anon_id);
+        localStorage.setItem('rebus_anon_id', existingUser.anon_id);
+        setUsername(existingUser.username);
+        onComplete(existingUser.username);
+        return;
+      }
+    }
+
     // Ensure we have an anon_id
     let anonId = getAnonId();
     if (!anonId) {
@@ -120,7 +186,6 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
     }
 
     // Save to users table
-    const googleUser = getGoogleUser();
     await supabase
       .from('users')
       .upsert({

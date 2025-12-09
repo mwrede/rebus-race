@@ -17,6 +17,11 @@ export interface Submission {
   time_ms: number;
   created_at: string;
   guess_count?: number | null;
+  guess_1?: string | null;
+  guess_2?: string | null;
+  guess_3?: string | null;
+  guess_4?: string | null;
+  guess_5?: string | null;
 }
 
 export interface Guess {

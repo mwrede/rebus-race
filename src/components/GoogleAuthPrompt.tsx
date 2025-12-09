@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { setGoogleUser, getAnonId, getUsername } from '../lib/auth';
+import { setGoogleUser, setAnonId, setUsername, getAnonId, getUsername } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 
 interface GoogleAuthPromptProps {
@@ -23,14 +23,65 @@ function GoogleAuthPrompt({ onComplete }: GoogleAuthPromptProps) {
           Authorization: `Bearer ${tokenResponse.access_token}`,
         },
       });
-      const googleUser = await response.json();
+      const googleUserData = await response.json();
 
+      // Check if this Google email already exists in the database
+      const { data: existingUser, error: lookupError } = await supabase
+        .from('users')
+        .select('anon_id, username, google_id, google_email')
+        .eq('google_email', googleUserData.email)
+        .single();
+
+      if (lookupError && lookupError.code !== 'PGRST116') {
+        // PGRST116 is "not found" which is fine, but other errors are not
+        throw lookupError;
+      }
+
+      // If user exists with this Google email, use that account instead
+      if (existingUser && existingUser.username) {
+        // Store Google user info
+        setGoogleUser({
+          sub: googleUserData.sub,
+          email: googleUserData.email,
+          name: googleUserData.name,
+          picture: googleUserData.picture,
+        });
+
+        // Set the existing anon_id and username
+        setAnonId(existingUser.anon_id);
+        localStorage.setItem('rebus_anon_id', existingUser.anon_id);
+        setUsername(existingUser.username);
+
+        // Update Google info in case it changed
+        await supabase
+          .from('users')
+          .update({
+            google_id: googleUserData.sub,
+            google_email: googleUserData.email,
+            google_name: googleUserData.name,
+            google_picture: googleUserData.picture,
+            email: googleUserData.email,
+          })
+          .eq('anon_id', existingUser.anon_id);
+
+        // Update all submissions to ensure they have the username
+        await supabase
+          .from('submissions')
+          .update({ username: existingUser.username })
+          .eq('anon_id', existingUser.anon_id)
+          .is('username', null);
+
+        onComplete();
+        return;
+      }
+
+      // No existing user with this Google email - link to current username
       // Store Google user info
       setGoogleUser({
-        sub: googleUser.sub,
-        email: googleUser.email,
-        name: googleUser.name,
-        picture: googleUser.picture,
+        sub: googleUserData.sub,
+        email: googleUserData.email,
+        name: googleUserData.name,
+        picture: googleUserData.picture,
       });
 
       // Use existing anon_id to link Google auth to existing username
@@ -45,11 +96,11 @@ function GoogleAuthPrompt({ onComplete }: GoogleAuthPromptProps) {
         .upsert({
           anon_id: existingAnonId,
           username: username,
-          google_id: googleUser.sub,
-          google_email: googleUser.email,
-          google_name: googleUser.name,
-          google_picture: googleUser.picture,
-          email: googleUser.email,
+          google_id: googleUserData.sub,
+          google_email: googleUserData.email,
+          google_name: googleUserData.name,
+          google_picture: googleUserData.picture,
+          email: googleUserData.email,
         }, {
           onConflict: 'anon_id'
         });

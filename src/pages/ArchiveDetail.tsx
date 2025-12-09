@@ -340,6 +340,15 @@ function ArchiveDetail() {
       // Calculate guess count: wrong guesses + 1 (the correct guess)
       // If first guess is correct, wrongGuesses.length = 0, so guess_count = 1
       const finalGuessCount = wrongGuesses.length + 1;
+      
+      // Build array of all guesses: wrong guesses + current (correct) answer
+      const allGuesses = [...wrongGuesses, currentAnswer];
+      
+      // Map guesses to columns (guess_1 through guess_5)
+      const guessColumns: Record<string, string | null> = {};
+      for (let i = 0; i < 5; i++) {
+        guessColumns[`guess_${i + 1}`] = allGuesses[i] || null;
+      }
 
       try {
         const username = getUsername();
@@ -353,6 +362,7 @@ function ArchiveDetail() {
             time_ms: timeMs,
             username: username || null,
             guess_count: finalGuessCount,
+            ...guessColumns,
           })
           .select()
           .single();
@@ -390,6 +400,15 @@ function ArchiveDetail() {
         const endTime = Date.now();
         const timeMs = startTime ? endTime - startTime : 0;
 
+        // Build array of all guesses (all 5 are wrong)
+        const allGuesses = newWrongGuesses;
+        
+        // Map guesses to columns (guess_1 through guess_5)
+        const guessColumns: Record<string, string | null> = {};
+        for (let i = 0; i < 5; i++) {
+          guessColumns[`guess_${i + 1}`] = allGuesses[i] || null;
+        }
+
         try {
           const username = getUsername();
           const { data, error } = await supabase
@@ -402,6 +421,7 @@ function ArchiveDetail() {
               time_ms: timeMs,
               username: username || null,
               guess_count: newGuessCount,
+              ...guessColumns,
             })
             .select()
             .single();

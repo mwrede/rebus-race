@@ -19,3 +19,4 @@ WHERE anon_id = 'ANON_ID_HERE';
 -- Or use this pattern for individual updates
 
 
+

@@ -10,3 +10,4 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NU
 COMMENT ON COLUMN users.email IS 'Optional email address for user notifications';
 
 
+
