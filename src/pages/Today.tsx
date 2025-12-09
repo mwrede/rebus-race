@@ -1182,12 +1182,27 @@ function Today() {
 
       {alreadyPlayed && previousSubmission && (
         <div className="mb-3 sm:mb-4 md:mb-6">
-          <div className="text-center mb-2 sm:mb-3 md:mb-4">
-            <div className="text-xs sm:text-sm font-medium text-gray-600 mb-1 sm:mb-2">
-              Your Result from Today
+          <div className="bg-gray-100 rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-3 sm:mb-4 md:mb-6 opacity-75">
+            <div className="text-center mb-2 sm:mb-3 md:mb-4">
+              <div className="text-xs sm:text-sm font-medium text-gray-600 mb-1 sm:mb-2">
+                You've already played today's puzzle
+              </div>
+              <div className="mb-2 sm:mb-3 md:mb-4">
+                <img
+                  src={puzzle?.image_url}
+                  alt="Rebus puzzle"
+                  className="w-full rounded-lg border-2 border-gray-300 opacity-60"
+                />
+              </div>
             </div>
           </div>
-          <div className="text-center mb-2 sm:mb-3">
+          <div className="rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 bg-white">
+            <div className="text-center mb-1.5 sm:mb-2 md:mb-3">
+              <div className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 mb-1">
+                Your Result from Today
+              </div>
+            </div>
+            <div className="text-center mb-2 sm:mb-3">
             <div
               className={`text-2xl sm:text-3xl md:text-4xl mb-1.5 sm:mb-2 md:mb-3 ${
                 previousSubmission.is_correct ? 'text-green-600' : 'text-red-600'
@@ -1314,6 +1329,7 @@ function Today() {
                 )}
               </>
             )}
+            </div>
           </div>
         </div>
       )}
@@ -1624,15 +1640,8 @@ function Today() {
         </div>
       )}
 
-      {submitted && submission && (
-        <div className={`rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 ${alreadyPlayed ? 'bg-gray-100 opacity-75' : 'bg-white'}`}>
-          {alreadyPlayed && (
-            <div className="text-center mb-1.5 sm:mb-2 md:mb-3">
-              <div className="text-[10px] sm:text-xs md:text-sm font-medium text-gray-600 mb-1">
-                Your Result from Today
-              </div>
-            </div>
-          )}
+      {submitted && submission && !alreadyPlayed && (
+        <div className="rounded-lg shadow-md p-2.5 sm:p-3 md:p-4 lg:p-6 bg-white">
           <div className="text-center mb-2 sm:mb-3">
             <div
               className={`text-2xl sm:text-3xl md:text-4xl mb-1.5 sm:mb-2 md:mb-3 ${
