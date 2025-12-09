@@ -470,55 +470,46 @@ function Today() {
         (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
       );
 
-      // Group submissions by (anon_id, puzzle_id) to get the most recent submission for each puzzle per user
-      // Since we ordered by created_at DESC, the first submission we see for each (anon_id, puzzle_id) is the most recent
-      const submissionKeyMap = new Map<string, { anon_id: string; puzzle_id: string; is_correct: boolean; username: string | null }>();
+      // Group submissions by (username, puzzle_id) to get the most recent submission for each puzzle per username
+      // Since we ordered by created_at DESC, the first submission we see for each (username, puzzle_id) is the most recent
+      const submissionKeyMap = new Map<string, { username: string; puzzle_id: string; is_correct: boolean }>();
       
       dailyAllSubmissions.forEach((s: Submission) => {
-        if (!s.anon_id) return;
+        if (!s.username) return; // Skip submissions without username
         
-        const key = `${s.anon_id}:${s.puzzle_id}`;
-        // Only keep the first (most recent) submission for each (anon_id, puzzle_id) pair
+        const key = `${s.username}:${s.puzzle_id}`;
+        // Only keep the first (most recent) submission for each (username, puzzle_id) pair
         if (!submissionKeyMap.has(key)) {
           submissionKeyMap.set(key, {
-            anon_id: s.anon_id,
+            username: s.username,
             puzzle_id: s.puzzle_id,
             is_correct: s.is_correct,
-            username: s.username || null,
           });
         }
       });
 
-      // Group by anon_id for streak calculation
-      const userSubmissionsForStreak = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
+      // Group by username for streak calculation
+      const userSubmissionsForStreak = new Map<string, { submissions: Map<string, boolean> }>();
       
       submissionKeyMap.forEach((submission) => {
-        if (!userSubmissionsForStreak.has(submission.anon_id)) {
-          userSubmissionsForStreak.set(submission.anon_id, {
-            username: submission.username,
+        if (!userSubmissionsForStreak.has(submission.username)) {
+          userSubmissionsForStreak.set(submission.username, {
             submissions: new Map(),
           });
         }
         
-        const userData = userSubmissionsForStreak.get(submission.anon_id)!;
+        const userData = userSubmissionsForStreak.get(submission.username)!;
         userData.submissions.set(submission.puzzle_id, submission.is_correct);
-        // Update username if available
-        if (submission.username) {
-          userData.username = submission.username;
-        }
       });
 
       // Group by anon_id and calculate stats (using ALL submissions, not just daily)
       const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();
 
-      // Calculate streaks for each user
-      const streakMap = new Map<string, number>();
-      
-      // Initialize streak map for all users in userStats (set to 0 by default)
-      // But first we need to populate userStats, so we'll do this after
+      // Calculate streaks for each username
+      const streakMapByUsername = new Map<string, number>();
       
       // Calculate actual streaks for users with daily puzzle submissions
-      userSubmissionsForStreak.forEach((userData, anon_id) => {
+      userSubmissionsForStreak.forEach((userData, username) => {
         let currentStreak = 0;
         
         // Count consecutive wins from most recent puzzle backwards
@@ -536,7 +527,7 @@ function Today() {
           }
         }
         
-        streakMap.set(anon_id, currentStreak);
+        streakMapByUsername.set(username, currentStreak);
       });
 
       allTimeSubmissions.forEach((submission: Submission) => {
@@ -558,19 +549,14 @@ function Today() {
         }
       });
 
-      // Initialize streak map for all users in userStats (set to 0 by default)
-      userStats.forEach((_, anon_id) => {
-        if (!streakMap.has(anon_id)) {
-          streakMap.set(anon_id, 0);
-        }
-      });
-
       // Convert to leaderboard entries and find user's rank
+      // Map streaks by username to entries by anon_id
       const entries = Array.from(userStats.entries())
         .map(([anon_id, stats]) => {
           const totalTime = stats.times.reduce((sum, time) => sum + time, 0);
           const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
-          const streak = streakMap.get(anon_id) || 0;
+          // Get streak by username (if username exists)
+          const streak = stats.username ? (streakMapByUsername.get(stats.username) || 0) : 0;
 
           return {
             anon_id,
@@ -602,40 +588,43 @@ function Today() {
         const userRank = userEntry + 1;
         setAllTimeRank(userRank);
 
-        // Get mini leaderboard: person above, user, person below
+        // Get mini leaderboard: top 3 + user row (or just top 3 if user is in top 3)
         const miniLeaderboard: Array<{ rank: number; username: string | null; wins: number; averageTime: number; streak: number }> = [];
         
-        // Person above (if exists)
-        if (userEntry > 0) {
-          const above = entries[userEntry - 1];
-          miniLeaderboard.push({
-            rank: userRank - 1,
-            username: above.username,
-            wins: above.puzzlesWon,
-            averageTime: above.averageTime,
-            streak: above.streak,
+        // Check if user is in top 3
+        if (userRank <= 3) {
+          // User is in top 3, just show top 3
+          const top3 = entries.slice(0, 3);
+          top3.forEach((entry, idx) => {
+            miniLeaderboard.push({
+              rank: idx + 1,
+              username: entry.username,
+              wins: entry.puzzlesWon,
+              averageTime: entry.averageTime,
+              streak: entry.streak,
+            });
           });
-        }
-        
-        // User
-        const user = entries[userEntry];
-        miniLeaderboard.push({
-          rank: userRank,
-          username: user.username,
-          wins: user.puzzlesWon,
-          averageTime: user.averageTime,
-          streak: user.streak,
-        });
-        
-        // Person below (if exists)
-        if (userEntry < entries.length - 1) {
-          const below = entries[userEntry + 1];
+        } else {
+          // User is not in top 3, show top 3 + user row
+          const top3 = entries.slice(0, 3);
+          top3.forEach((entry, idx) => {
+            miniLeaderboard.push({
+              rank: idx + 1,
+              username: entry.username,
+              wins: entry.puzzlesWon,
+              averageTime: entry.averageTime,
+              streak: entry.streak,
+            });
+          });
+          
+          // Add user row as 4th entry
+          const user = entries[userEntry];
           miniLeaderboard.push({
-            rank: userRank + 1,
-            username: below.username,
-            wins: below.puzzlesWon,
-            averageTime: below.averageTime,
-            streak: below.streak,
+            rank: userRank,
+            username: user.username,
+            wins: user.puzzlesWon,
+            averageTime: user.averageTime,
+            streak: user.streak,
           });
         }
         
@@ -947,35 +936,38 @@ function Today() {
       const userRank = userIndex !== -1 ? userIndex + 1 : null;
       setRank(userRank);
 
-      // Get mini leaderboard: person above, user, person below
+      // Get mini leaderboard: top 3 + user row (or just top 3 if user is in top 3)
       if (userIndex !== -1 && allSubmissions) {
         const miniLeaderboard: Array<{ rank: number; username: string | null; time: number }> = [];
         
-        // Person above (if exists)
-        if (userIndex > 0) {
-          const above = allSubmissions[userIndex - 1];
-          miniLeaderboard.push({
-            rank: userIndex,
-            username: above.username,
-            time: above.time_ms,
+        // Check if user is in top 3
+        if (userRank !== null && userRank <= 3) {
+          // User is in top 3, just show top 3
+          const top3 = allSubmissions.slice(0, 3);
+          top3.forEach((entry: Submission, idx: number) => {
+            miniLeaderboard.push({
+              rank: idx + 1,
+              username: entry.username,
+              time: entry.time_ms,
+            });
           });
-        }
-        
-        // User
-        const user = allSubmissions[userIndex];
-        miniLeaderboard.push({
-          rank: userRank!,
-          username: user.username,
-          time: user.time_ms,
-        });
-        
-        // Person below (if exists)
-        if (userIndex < allSubmissions.length - 1) {
-          const below = allSubmissions[userIndex + 1];
+        } else {
+          // User is not in top 3, show top 3 + user row
+          const top3 = allSubmissions.slice(0, 3);
+          top3.forEach((entry: Submission, idx: number) => {
+            miniLeaderboard.push({
+              rank: idx + 1,
+              username: entry.username,
+              time: entry.time_ms,
+            });
+          });
+          
+          // Add user row as 4th entry
+          const user = allSubmissions[userIndex];
           miniLeaderboard.push({
-            rank: userRank! + 1,
-            username: below.username,
-            time: below.time_ms,
+            rank: userRank!,
+            username: user.username,
+            time: user.time_ms,
           });
         }
         
@@ -1312,16 +1304,20 @@ function Today() {
                             </tr>
                           </thead>
                           <tbody>
-                            {todayLeaderboardEntries.map((entry, idx) => (
-                              <tr
-                                key={idx}
-                                className={entry.rank === rank ? 'bg-blue-100 font-semibold' : ''}
-                              >
-                                <td className="py-1 px-2">{entry.rank}</td>
-                                <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
-                                <td className="py-1 px-2 text-right">{(entry.time / 1000).toFixed(2)}s</td>
-                              </tr>
-                            ))}
+                            {todayLeaderboardEntries.map((entry, idx) => {
+                              const currentUsername = getUsername();
+                              const isUserRow = entry.rank === rank && entry.username === currentUsername;
+                              return (
+                                <tr
+                                  key={idx}
+                                  className={isUserRow ? 'bg-blue-100 font-semibold' : ''}
+                                >
+                                  <td className="py-1 px-2">{entry.rank}</td>
+                                  <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
+                                  <td className="py-1 px-2 text-right">{(entry.time / 1000).toFixed(2)}s</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -1356,17 +1352,21 @@ function Today() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {allTimeLeaderboardEntries.map((entry, idx) => (
-                                  <tr
-                                    key={idx}
-                                    className={allTimeRank !== null && entry.rank === allTimeRank ? 'bg-purple-100 font-semibold' : ''}
-                                  >
-                                    <td className="py-1 px-1 sm:px-2">{entry.rank}</td>
-                                    <td className="py-1 px-1 sm:px-2 truncate max-w-[80px] sm:max-w-none">{entry.username || 'Anonymous'}</td>
-                                    <td className="py-1 px-1 sm:px-2 text-right">{(entry.averageTime / 1000).toFixed(2)}s</td>
-                                    <td className="py-1 px-1 sm:px-2 text-right">{entry.wins}</td>
-                                  </tr>
-                                ))}
+                                {allTimeLeaderboardEntries.map((entry, idx) => {
+                                  const currentUsername = getUsername();
+                                  const isUserRow = allTimeRank !== null && entry.rank === allTimeRank && entry.username === currentUsername;
+                                  return (
+                                    <tr
+                                      key={idx}
+                                      className={isUserRow ? 'bg-purple-100 font-semibold' : ''}
+                                    >
+                                      <td className="py-1 px-1 sm:px-2">{entry.rank}</td>
+                                      <td className="py-1 px-1 sm:px-2 truncate max-w-[80px] sm:max-w-none">{entry.username || 'Anonymous'}</td>
+                                      <td className="py-1 px-1 sm:px-2 text-right">{(entry.averageTime / 1000).toFixed(2)}s</td>
+                                      <td className="py-1 px-1 sm:px-2 text-right">{entry.wins}</td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -1834,16 +1834,20 @@ function Today() {
                               </tr>
                             </thead>
                             <tbody>
-                              {todayLeaderboardEntries.map((entry, idx) => (
-                                <tr
-                                  key={idx}
-                                  className={entry.rank === rank ? 'bg-blue-100 font-semibold' : ''}
-                                >
-                                  <td className="py-1 px-2">{entry.rank}</td>
-                                  <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
-                                  <td className="py-1 px-2 text-right">{(entry.time / 1000).toFixed(2)}s</td>
-                                </tr>
-                              ))}
+                              {todayLeaderboardEntries.map((entry, idx) => {
+                                const currentUsername = getUsername();
+                                const isUserRow = entry.rank === rank && entry.username === currentUsername;
+                                return (
+                                  <tr
+                                    key={idx}
+                                    className={isUserRow ? 'bg-blue-100 font-semibold' : ''}
+                                  >
+                                    <td className="py-1 px-2">{entry.rank}</td>
+                                    <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
+                                    <td className="py-1 px-2 text-right">{(entry.time / 1000).toFixed(2)}s</td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -1868,17 +1872,21 @@ function Today() {
                               </tr>
                             </thead>
                             <tbody>
-                              {allTimeLeaderboardEntries.map((entry, idx) => (
-                                <tr
-                                  key={idx}
-                                  className={allTimeRank !== null && entry.rank === allTimeRank ? 'bg-purple-100 font-semibold' : ''}
-                                >
-                                  <td className="py-1 px-1 sm:px-2">{entry.rank}</td>
-                                  <td className="py-1 px-1 sm:px-2 truncate max-w-[80px] sm:max-w-none">{entry.username || 'Anonymous'}</td>
-                                  <td className="py-1 px-1 sm:px-2 text-right">{(entry.averageTime / 1000).toFixed(2)}s</td>
-                                  <td className="py-1 px-1 sm:px-2 text-right">{entry.wins}</td>
-                                </tr>
-                              ))}
+                              {allTimeLeaderboardEntries.map((entry, idx) => {
+                                const currentUsername = getUsername();
+                                const isUserRow = allTimeRank !== null && entry.rank === allTimeRank && entry.username === currentUsername;
+                                return (
+                                  <tr
+                                    key={idx}
+                                    className={isUserRow ? 'bg-purple-100 font-semibold' : ''}
+                                  >
+                                    <td className="py-1 px-1 sm:px-2">{entry.rank}</td>
+                                    <td className="py-1 px-1 sm:px-2 truncate max-w-[80px] sm:max-w-none">{entry.username || 'Anonymous'}</td>
+                                    <td className="py-1 px-1 sm:px-2 text-right">{(entry.averageTime / 1000).toFixed(2)}s</td>
+                                    <td className="py-1 px-1 sm:px-2 text-right">{entry.wins}</td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>

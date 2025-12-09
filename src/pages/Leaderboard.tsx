@@ -209,61 +209,43 @@ function Leaderboard() {
         (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
       );
 
-      // Group submissions by (anon_id, puzzle_id) to get the most recent submission for each puzzle per user
-      // Since we ordered by created_at DESC, the first submission we see for each (anon_id, puzzle_id) is the most recent
-      const submissionKeyMap = new Map<string, { anon_id: string; puzzle_id: string; is_correct: boolean; username: string | null }>();
+      // Group submissions by (username, puzzle_id) to get the most recent submission for each puzzle per username
+      // Since we ordered by created_at DESC, the first submission we see for each (username, puzzle_id) is the most recent
+      const submissionKeyMap = new Map<string, { username: string; puzzle_id: string; is_correct: boolean }>();
       
       dailyAllSubmissions.forEach((s: Submission) => {
-        if (!s.anon_id) return;
+        if (!s.username) return; // Skip submissions without username
         
-        const key = `${s.anon_id}:${s.puzzle_id}`;
-        // Only keep the first (most recent) submission for each (anon_id, puzzle_id) pair
+        const key = `${s.username}:${s.puzzle_id}`;
+        // Only keep the first (most recent) submission for each (username, puzzle_id) pair
         if (!submissionKeyMap.has(key)) {
           submissionKeyMap.set(key, {
-            anon_id: s.anon_id,
+            username: s.username,
             puzzle_id: s.puzzle_id,
             is_correct: s.is_correct,
-            username: s.username || null,
           });
         }
       });
 
-      // Group by anon_id for streak calculation
-      const userSubmissionsForStreak = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
+      // Group by username for streak calculation
+      const userSubmissionsForStreak = new Map<string, { submissions: Map<string, boolean> }>();
       
       submissionKeyMap.forEach((submission) => {
-        if (!userSubmissionsForStreak.has(submission.anon_id)) {
-          userSubmissionsForStreak.set(submission.anon_id, {
-            username: submission.username,
+        if (!userSubmissionsForStreak.has(submission.username)) {
+          userSubmissionsForStreak.set(submission.username, {
             submissions: new Map(),
           });
         }
         
-        const userData = userSubmissionsForStreak.get(submission.anon_id)!;
+        const userData = userSubmissionsForStreak.get(submission.username)!;
         userData.submissions.set(submission.puzzle_id, submission.is_correct);
-        // Update username if available
-        if (submission.username) {
-          userData.username = submission.username;
-        }
       });
 
-      // Calculate streaks for each user
-      const streakMap = new Map<string, number>();
-      
-      // Initialize streak map for all users in userStats (set to 0 by default)
-      userStats.forEach((_, anon_id) => {
-        streakMap.set(anon_id, 0);
-      });
-      
-      // Also initialize streaks for users with daily puzzle submissions (even if not in userStats)
-      userSubmissionsForStreak.forEach((_, anon_id) => {
-        if (!streakMap.has(anon_id)) {
-          streakMap.set(anon_id, 0);
-        }
-      });
+      // Calculate streaks for each username
+      const streakMapByUsername = new Map<string, number>();
       
       // Calculate actual streaks for users with daily puzzle submissions
-      userSubmissionsForStreak.forEach((userData, anon_id) => {
+      userSubmissionsForStreak.forEach((userData, username) => {
         let currentStreak = 0;
         
         // Count consecutive wins from most recent puzzle backwards
@@ -282,11 +264,11 @@ function Leaderboard() {
           }
         }
         
-        streakMap.set(anon_id, currentStreak);
-        console.log(`Streak for ${anon_id}: ${currentStreak}, username: ${userData.username}`);
+        streakMapByUsername.set(username, currentStreak);
+        console.log(`Streak for ${username}: ${currentStreak}`);
       });
       
-      console.log('Streak map size:', streakMap.size, 'User stats size:', userStats.size);
+      console.log('Streak map size:', streakMapByUsername.size, 'User stats size:', userStats.size);
 
       // Convert to leaderboard entries with streaks
       const entries: AllTimeEntry[] = Array.from(userStats.entries())
@@ -295,10 +277,11 @@ function Leaderboard() {
           const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
           const totalGuesses = stats.guesses.reduce((sum, guess) => sum + guess, 0);
           const averageGuesses = stats.guesses.length > 0 ? totalGuesses / stats.guesses.length : 0;
-          const streak = streakMap.get(anon_id);
-          const finalStreak = streak !== undefined ? streak : 0;
+          // Get streak by username (if username exists)
+          const streak = stats.username ? (streakMapByUsername.get(stats.username) || 0) : 0;
+          const finalStreak = streak;
           
-          console.log(`Entry for ${anon_id} (${stats.username}): streak=${finalStreak}, wins=${stats.puzzles.size}, streakMap has: ${streakMap.has(anon_id)}`);
+          console.log(`Entry for ${anon_id} (${stats.username}): streak=${finalStreak}, wins=${stats.puzzles.size}`);
 
           return {
             anon_id,
