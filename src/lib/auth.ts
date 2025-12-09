@@ -47,7 +47,17 @@ export function clearGoogleUser(): void {
 export function logout(): void {
   clearUsername();
   clearGoogleUser();
-  // Keep anon_id for now - user might want to log back in
+  // Clear anon_id so new user gets fresh data
+  localStorage.removeItem(ANON_ID_KEY);
+  // Clear all game state from localStorage
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('rebus_game_state_') || key === 'rebus_wins' || key === 'rebus_won_puzzles')) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
 }
 
 export function getAnonId(): string | null {

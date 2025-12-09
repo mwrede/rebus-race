@@ -49,7 +49,10 @@ function Today() {
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
   const HINT_PENALTY_SECONDS = 60; // 1 minute penalty for using hint
-  const GAME_STATE_KEY = 'rebus_game_state_today';
+  const getGameStateKey = () => {
+    const anonId = localStorage.getItem('rebus_anon_id');
+    return `rebus_game_state_today_${anonId || 'default'}`;
+  };
 
   // Save game state to localStorage
   const saveGameState = () => {
@@ -65,14 +68,14 @@ function Today() {
         isReady: true,
         timestamp: Date.now(),
       };
-      localStorage.setItem(GAME_STATE_KEY, JSON.stringify(gameState));
+      localStorage.setItem(getGameStateKey(), JSON.stringify(gameState));
     }
   };
 
   // Load game state from localStorage
   const loadGameState = (puzzleId: string): boolean => {
     try {
-      const savedState = localStorage.getItem(GAME_STATE_KEY);
+      const savedState = localStorage.getItem(getGameStateKey());
       if (savedState) {
         const state = JSON.parse(savedState);
         // Only restore if it's for the same puzzle and not too old (within 24 hours)
@@ -98,7 +101,7 @@ function Today() {
 
   // Clear game state from localStorage
   const clearGameState = () => {
-    localStorage.removeItem(GAME_STATE_KEY);
+    localStorage.removeItem(getGameStateKey());
   };
 
   useEffect(() => {
@@ -1410,7 +1413,7 @@ function Today() {
                     <div className="text-center text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
                       <span>Your time: {(submission.time_ms / 1000).toFixed(2)}s</span>
                       {averageTimeToday !== null && (
-                        <span className="text-blue-600">
+                        <span className="text-blue-600 text-sm sm:text-base md:text-lg">
                           {' '}(Avg: {(averageTimeToday / 1000).toFixed(2)}s)
                         </span>
                       )}
@@ -1421,7 +1424,7 @@ function Today() {
                       <div className="text-center text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
                         <span>{submission.guess_count} {submission.guess_count === 1 ? 'guess' : 'guesses'}</span>
                         {averageGuessesToday !== null && (
-                          <span className="text-gray-600">
+                          <span className="text-blue-600 text-sm sm:text-base md:text-lg">
                             {' '}(Avg: {averageGuessesToday.toFixed(1)})
                           </span>
                         )}

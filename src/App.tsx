@@ -4,7 +4,7 @@ import Today from './pages/Today';
 import Leaderboard from './pages/Leaderboard';
 import Archive from './pages/Archive';
 import ArchiveDetail from './pages/ArchiveDetail';
-import { getUsername, hasUsername, isFullyAuthenticated, hasGoogleAuth, getGoogleUser, setAnonId, setUsername as setUsernameInStorage } from './lib/auth';
+import { getUsername, hasUsername, isFullyAuthenticated, hasGoogleAuth, getGoogleUser, setAnonId, setUsername as setUsernameInStorage, logout } from './lib/auth';
 import UsernamePrompt from './components/UsernamePrompt';
 import GoogleAuthPrompt from './components/GoogleAuthPrompt';
 import UserMenu from './components/UserMenu';
@@ -210,9 +210,12 @@ function App() {
   };
 
   const handleLogout = () => {
+    logout();
     setUsername(null);
     setShowUsernamePrompt(true);
     setShowGoogleAuthPrompt(false);
+    // Reload page to clear all state and start fresh
+    window.location.reload();
   };
 
   const handleChangeUsername = () => {
