@@ -1407,22 +1407,22 @@ function Today() {
                 ) : (
                   <div className="mt-4 space-y-3 sm:space-y-4">
                     {/* Time with average */}
-                    <div className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <div className="text-center text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
                       <span>Your time: {(submission.time_ms / 1000).toFixed(2)}s</span>
                       {averageTimeToday !== null && (
-                        <span className="text-blue-600 text-sm font-normal">
-                          (Avg: {(averageTimeToday / 1000).toFixed(2)}s)
+                        <span className="text-blue-600">
+                          {' '}(Avg: {(averageTimeToday / 1000).toFixed(2)}s)
                         </span>
                       )}
                     </div>
 
                     {/* Number of guesses with average */}
                     {submission.guess_count && (
-                      <div className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <div className="text-center text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
                         <span>{submission.guess_count} {submission.guess_count === 1 ? 'guess' : 'guesses'}</span>
                         {averageGuessesToday !== null && (
-                          <span className="text-sm font-normal text-gray-600">
-                            (Avg: {averageGuessesToday.toFixed(1)})
+                          <span className="text-gray-600">
+                            {' '}(Avg: {averageGuessesToday.toFixed(1)})
                           </span>
                         )}
                       </div>
