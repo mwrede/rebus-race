@@ -260,7 +260,7 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <p className="text-sm font-medium text-gray-700 mb-2">
-              Step 1: Sign in with Google <span className="text-red-500">*</span>
+              Sign in with Google <span className="text-red-500">*</span>
             </p>
             {googleUser ? (
               <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
@@ -303,7 +303,7 @@ function UsernamePrompt({ onComplete }: UsernamePromptProps) {
               htmlFor="username"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Step 2: Choose a Username <span className="text-red-500">*</span>
+              Choose a username <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
