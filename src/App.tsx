@@ -124,10 +124,6 @@ function App() {
       );
 
       // Get all daily puzzles ordered by date (newest first)
-      // Get today's puzzle ID to exclude it from streak if not played
-      const todayPuzzle = puzzles?.find((p: { id: string; date: string }) => p.date.split('T')[0] === today);
-      const todayPuzzleId = todayPuzzle?.id;
-      
       const dailyPuzzles = puzzles?.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id)) || [];
       dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
 
@@ -156,15 +152,14 @@ function App() {
 
       // Calculate streak: count consecutive wins from most recent puzzle backwards
       let currentStreak = 0;
-      let foundFirstWin = false;
       for (const puzzle of dailyPuzzles) {
         const result = submissionMap.get(puzzle.id);
-        const isTodayPuzzle = puzzle.id === todayPuzzleId;
+        const puzzleDate = puzzle.date.split('T')[0];
+        const isTodayPuzzle = puzzleDate === today;
         
         if (result === true) {
           // Win - continue streak
           currentStreak++;
-          foundFirstWin = true;
         } else if (result === false) {
           // Loss - break streak
           break;
@@ -175,8 +170,8 @@ function App() {
             continue;
           } else {
             // If it's a past puzzle and they didn't play, break streak (they missed a day)
-            if (foundFirstWin) {
-              // Only break if we've already found at least one win
+            // Only break if we've already found at least one win (to handle users who haven't played yet)
+            if (currentStreak > 0) {
               break;
             }
           }
