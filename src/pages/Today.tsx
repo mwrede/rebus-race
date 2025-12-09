@@ -1241,6 +1241,12 @@ function Today() {
     return num + 'th';
   };
   const dateStr = `${month} ${getOrdinalSuffix(day)}`;
+  
+  // Get reveal image path based on today's date (MM.DD.YYYY_reveal.png format)
+  const revealMonth = String(today.getMonth() + 1).padStart(2, '0');
+  const revealDay = String(today.getDate()).padStart(2, '0');
+  const revealYear = today.getFullYear();
+  const revealImagePath = `/${revealMonth}.${revealDay}.${revealYear}_reveal.png`;
 
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
@@ -1297,6 +1303,23 @@ function Today() {
                 {incorrectPercentage.toFixed(1)}% of players also got it wrong
               </div>
             )}
+            {/* Reveal image with fade-in animation */}
+            <div className="mb-2 sm:mb-3 md:mb-4">
+              <img
+                src={revealImagePath}
+                alt="Reveal"
+                className="w-full rounded-lg border-2 border-gray-300 max-h-[40vh] sm:max-h-[50vh] object-contain opacity-0"
+                onLoad={(e) => {
+                  // Trigger fade-in when image loads
+                  e.currentTarget.style.transition = 'opacity 1s ease-in';
+                  e.currentTarget.style.opacity = '1';
+                }}
+                onError={(e) => {
+                  // Hide image if it doesn't exist
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
             {previousSubmission.is_correct && (
               <>
                 {loadingStats ? (
@@ -1826,6 +1849,23 @@ function Today() {
                 {incorrectPercentage.toFixed(1)}% of players also got it wrong
               </div>
             )}
+            {/* Reveal image with fade-in animation */}
+            <div className="mb-2 sm:mb-3 md:mb-4 animate-fade-in">
+              <img
+                src={revealImagePath}
+                alt="Reveal"
+                className="w-full rounded-lg border-2 border-gray-300 max-h-[40vh] sm:max-h-[50vh] object-contain opacity-0"
+                onLoad={(e) => {
+                  // Trigger fade-in when image loads
+                  e.currentTarget.style.transition = 'opacity 1s ease-in';
+                  e.currentTarget.style.opacity = '1';
+                }}
+                onError={(e) => {
+                  // Hide image if it doesn't exist
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
             {submission.is_correct && (
               <>
                 {loadingStats ? (
