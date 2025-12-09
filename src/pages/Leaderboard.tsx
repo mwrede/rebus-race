@@ -246,6 +246,7 @@ function Leaderboard() {
         let currentStreak = 0;
         
         // Count consecutive wins from most recent puzzle backwards
+        // dailyPuzzles is already sorted newest first (b.date.localeCompare(a.date))
         for (const puzzle of dailyPuzzles) {
           const result = userData.submissions.get(puzzle.id);
           if (result === true) {
@@ -261,7 +262,10 @@ function Leaderboard() {
         }
         
         streakMap.set(anon_id, currentStreak);
+        console.log(`Streak for ${anon_id}: ${currentStreak}, username: ${userData.username}`);
       });
+      
+      console.log('Streak map size:', streakMap.size, 'User stats size:', userStats.size);
 
       // Convert to leaderboard entries with streaks
       const entries: AllTimeEntry[] = Array.from(userStats.entries())
@@ -270,7 +274,10 @@ function Leaderboard() {
           const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
           const totalGuesses = stats.guesses.reduce((sum, guess) => sum + guess, 0);
           const averageGuesses = stats.guesses.length > 0 ? totalGuesses / stats.guesses.length : 0;
-          const streak = streakMap.get(anon_id) ?? 0;
+          const streak = streakMap.get(anon_id);
+          const finalStreak = streak !== undefined ? streak : 0;
+          
+          console.log(`Entry for ${anon_id} (${stats.username}): streak=${finalStreak}, wins=${stats.puzzles.size}, streakMap has: ${streakMap.has(anon_id)}`);
 
           return {
             anon_id,
@@ -278,7 +285,7 @@ function Leaderboard() {
             averageTime,
             averageGuesses,
             puzzlesWon: stats.puzzles.size,
-            streak,
+            streak: finalStreak,
           };
         })
         .filter((entry) => entry.puzzlesWon >= 1); // At least 1 puzzle won
@@ -297,6 +304,7 @@ function Leaderboard() {
       });
       
       console.log('All-time leaderboard entries:', sorted.length);
+      console.log('Sample entries with streaks:', sorted.slice(0, 5).map(e => ({ username: e.username, streak: e.streak, wins: e.puzzlesWon })));
       setAllTimeLeaderboard(sorted);
     } catch (error) {
       console.error('Error loading all-time leaderboard:', error);
@@ -536,7 +544,7 @@ function Leaderboard() {
                           </td>
                           <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4 whitespace-nowrap">
                             <span className="text-[10px] sm:text-xs md:text-sm text-orange-600 font-semibold">
-                              {entry.streak > 0 ? `🔥 ${entry.streak}` : '—'}
+                              {entry.streak > 0 ? `🔥 ${entry.streak}` : entry.streak === 0 ? '0' : '—'}
                             </span>
                           </td>
                         </tr>

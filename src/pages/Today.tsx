@@ -1331,9 +1331,9 @@ function Today() {
                               Moved up {previousAllTimeRank - allTimeRank} {previousAllTimeRank - allTimeRank === 1 ? 'spot' : 'spots'}!
                             </div>
                           )}
-                          <div className="overflow-x-auto">
+                          <div className="overflow-x-auto overflow-y-auto max-h-[120px]">
                             <table className="w-full text-xs sm:text-sm min-w-[320px]">
-                              <thead>
+                              <thead className="sticky top-0 bg-purple-50">
                                 <tr className="border-b border-purple-200">
                                   <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Rank</th>
                                   <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Username</th>
@@ -1356,6 +1356,17 @@ function Today() {
                               </tbody>
                             </table>
                           </div>
+                          {/* Rank change message */}
+                          {previousAllTimeRank !== null && allTimeRank !== null && previousAllTimeRank !== allTimeRank && (
+                            <div className={`text-xs sm:text-sm font-semibold mt-2 text-center ${
+                              previousAllTimeRank > allTimeRank ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {previousAllTimeRank > allTimeRank 
+                                ? `↑ Moved up ${previousAllTimeRank - allTimeRank} ${previousAllTimeRank - allTimeRank === 1 ? 'spot' : 'spots'} from yesterday`
+                                : `↓ Moved down ${allTimeRank - previousAllTimeRank} ${allTimeRank - previousAllTimeRank === 1 ? 'spot' : 'spots'} from yesterday`
+                              }
+                            </div>
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -1830,14 +1841,9 @@ function Today() {
                         <div className="text-sm sm:text-base font-bold text-purple-700 mb-2">
                           All-Time Leaderboard
                         </div>
-                        {previousAllTimeRank !== null && allTimeRank !== null && previousAllTimeRank > allTimeRank && (
-                          <div className="text-xs sm:text-sm text-green-600 font-semibold mb-2">
-                            Moved up {previousAllTimeRank - allTimeRank} {previousAllTimeRank - allTimeRank === 1 ? 'spot' : 'spots'}!
-                          </div>
-                        )}
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto overflow-y-auto max-h-[120px]">
                           <table className="w-full text-xs sm:text-sm min-w-[320px]">
-                            <thead>
+                            <thead className="sticky top-0 bg-purple-50">
                               <tr className="border-b border-purple-200">
                                 <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Rank</th>
                                 <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Username</th>
@@ -1860,6 +1866,17 @@ function Today() {
                             </tbody>
                           </table>
                         </div>
+                        {/* Rank change message */}
+                        {previousAllTimeRank !== null && allTimeRank !== null && previousAllTimeRank !== allTimeRank && (
+                          <div className={`text-xs sm:text-sm font-semibold mt-2 text-center ${
+                            previousAllTimeRank > allTimeRank ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {previousAllTimeRank > allTimeRank 
+                              ? `↑ Moved up ${previousAllTimeRank - allTimeRank} ${previousAllTimeRank - allTimeRank === 1 ? 'spot' : 'spots'} from yesterday`
+                              : `↓ Moved down ${allTimeRank - previousAllTimeRank} ${allTimeRank - previousAllTimeRank === 1 ? 'spot' : 'spots'} from yesterday`
+                            }
+                          </div>
+                        )}
                       </div>
                       </div>
                     )}
