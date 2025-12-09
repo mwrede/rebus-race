@@ -265,7 +265,7 @@ function Today() {
   const handleReady = () => {
     setIsReady(true);
     setStartTime(Date.now());
-    setTimerActive(true); // Lock in the player - hide nav and prevent navigation
+    setTimerActive(true); // Hide nav bar when actively answering
   };
 
   const handleHintClick = () => {
@@ -344,6 +344,7 @@ function Today() {
             setPreviousSubmission(existingSubmission);
             setSubmitted(true);
             setSubmission(existingSubmission);
+            setTimerActive(false); // Show nav bar on reveal/results page
             clearGameState(); // Clear any saved game state since they already played
             
             // Load ranking and past results for the previous submission
@@ -1228,6 +1229,7 @@ function Today() {
                   console.log('Submission already exists, skipping duplicate');
                   setIsSubmitting(false);
                   setSubmitted(true);
+                  setTimerActive(false); // Show nav bar on reveal/results page
                   // Load the existing submission data
                   const { data: existingData } = await supabase
                     .from('submissions')
@@ -1323,6 +1325,17 @@ function Today() {
       >
         {dateStr}
       </h1>
+
+      {/* Puzzle image on reveal/results page */}
+      {(submitted || alreadyPlayed) && puzzle && (
+        <div className="mb-3 sm:mb-4 md:mb-6">
+          <img
+            src={puzzle.image_url}
+            alt="Rebus puzzle"
+            className="w-full rounded-lg border-2 border-gray-200 max-h-[30vh] sm:max-h-[40vh] object-contain mx-auto"
+          />
+        </div>
+      )}
 
       {alreadyPlayed && previousSubmission && (
         <div className="mb-3 sm:mb-4 md:mb-6">
