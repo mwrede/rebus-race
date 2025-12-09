@@ -24,8 +24,9 @@ function Today() {
   const [previousSubmission, setPreviousSubmission] = useState<Submission | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [allTimeRank, setAllTimeRank] = useState<number | null>(null);
-  const [averageTime, setAverageTime] = useState<number | null>(null);
+  const [previousAllTimeRank, setPreviousAllTimeRank] = useState<number | null>(null);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
+  const [streak, setStreak] = useState<number>(0);
   const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
   const [guessCount, setGuessCount] = useState(0);
   const [showHintConfirmation, setShowHintConfirmation] = useState(false);
@@ -320,6 +321,11 @@ function Today() {
 
   const loadAllTimeStats = async () => {
     try {
+      // Save current rank as previous rank before updating
+      if (allTimeRank !== null) {
+        setPreviousAllTimeRank(allTimeRank);
+      }
+
       // Get today's date in local timezone (YYYY-MM-DD format) - same as loadTodayPuzzle
       const now = new Date();
       const year = now.getFullYear();
@@ -330,13 +336,45 @@ function Today() {
       // Get all puzzles to check which are archive (date < today)
       const { data: puzzles, error: puzzlesError } = await supabase
         .from('puzzles')
-        .select('id, date');
+        .select('id, date')
+        .order('date', { ascending: false });
 
       if (puzzlesError) throw puzzlesError;
 
       const archivePuzzleIds = new Set(
         puzzles?.filter((p: { date: string }) => p.date.split('T')[0] < today).map((p: { id: string }) => p.id) || []
       );
+
+      // Calculate streak: consecutive daily puzzles correct
+      const dailyPuzzles = puzzles?.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id)) || [];
+      dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
+
+      // Get user's submissions for daily puzzles
+      const { data: userSubmissions, error: userSubError } = await supabase
+        .from('submissions')
+        .select('puzzle_id, is_correct, created_at')
+        .eq('anon_id', anonId)
+        .order('created_at', { ascending: false });
+
+      if (userSubError) throw userSubError;
+
+      const submissionMap = new Map<string, boolean>();
+      (userSubmissions || []).forEach((s: Submission) => {
+        if (!archivePuzzleIds.has(s.puzzle_id) && !submissionMap.has(s.puzzle_id)) {
+          submissionMap.set(s.puzzle_id, s.is_correct);
+        }
+      });
+
+      let currentStreak = 0;
+      for (const puzzle of dailyPuzzles) {
+        const result = submissionMap.get(puzzle.id);
+        if (result === true) {
+          currentStreak++;
+        } else if (result === false || result === undefined) {
+          break;
+        }
+      }
+      setStreak(currentStreak);
 
       // Get all correct submissions, excluding archive puzzles
       const { data: submissions, error } = await supabase
@@ -400,11 +438,10 @@ function Today() {
           return a.averageTime - b.averageTime;
         });
 
-      // Find user's rank and average
+      // Find user's rank
       const userEntry = entries.findIndex((entry) => entry.anon_id === anonId);
       if (userEntry !== -1) {
         setAllTimeRank(userEntry + 1);
-        setAverageTime(entries[userEntry].averageTime);
       }
     } catch (error) {
       console.error('Error loading all-time stats:', error);
@@ -1283,37 +1320,53 @@ function Today() {
                     Loading your ranking...
                   </div>
                 ) : (
-                  <>
+                  <div className="mt-4 space-y-3 sm:space-y-4">
+                    {/* Time */}
+                    <div className="text-base sm:text-lg font-semibold text-gray-900">
+                      Your time: {(submission.time_ms / 1000).toFixed(2)}s
+                    </div>
+
+                    {/* Number of guesses */}
+                    {submission.guess_count && (
+                      <div className="text-base sm:text-lg font-semibold text-gray-900">
+                        {submission.guess_count} {submission.guess_count === 1 ? 'guess' : 'guesses'}
+                      </div>
+                    )}
+
+                    {/* Streak */}
+                    <div className="text-base sm:text-lg font-semibold text-orange-600">
+                      🔥 Streak: {streak} {streak === 1 ? 'day' : 'days'}
+                    </div>
+
+                    {/* Today's leaderboard */}
                     {rank !== null && (
-                      <div className="mt-2 sm:mt-3 md:mt-4 mb-2 sm:mb-3 md:mb-4">
-                        <div className="text-base sm:text-lg md:text-xl font-bold text-blue-600 mb-0.5 sm:mb-1">
-                          Today's Rank: #{rank}
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="text-sm sm:text-base font-bold text-blue-700 mb-1">
+                          Today's Leaderboard
                         </div>
-                        <div className="text-[10px] sm:text-xs md:text-sm text-gray-600">
+                        <div className="text-lg sm:text-xl font-bold text-blue-600">
+                          Rank #{rank}
+                        </div>
+                        <div className="text-xs sm:text-sm text-gray-600">
                           out of {totalCorrect} correct {totalCorrect === 1 ? 'submission' : 'submissions'}
                         </div>
                       </div>
                     )}
 
-                    {(allTimeRank !== null || averageTime !== null) && (
-                      <div className="mt-1.5 sm:mt-2 mb-2 sm:mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="text-center">
-                          <div className="text-[10px] sm:text-xs font-bold text-blue-700 mb-0.5 sm:mb-1">
-                            All-Time Stats
-                          </div>
-                          <div className="flex justify-center items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
-                            {allTimeRank !== null && (
-                              <span className="font-semibold text-gray-900">
-                                Rank: #{allTimeRank}
-                              </span>
-                            )}
-                            {averageTime !== null && (
-                              <span className="font-semibold text-gray-900">
-                                Avg: {(averageTime / 1000).toFixed(2)}s
-                              </span>
-                            )}
-                          </div>
+                    {/* All-time leaderboard */}
+                    {allTimeRank !== null && (
+                      <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="text-sm sm:text-base font-bold text-purple-700 mb-1">
+                          All-Time Leaderboard
                         </div>
+                        <div className="text-lg sm:text-xl font-bold text-purple-600">
+                          Rank #{allTimeRank}
+                        </div>
+                        {previousAllTimeRank !== null && previousAllTimeRank > allTimeRank && (
+                          <div className="text-xs sm:text-sm text-green-600 font-semibold mt-1">
+                            Moved up {previousAllTimeRank - allTimeRank} {previousAllTimeRank - allTimeRank === 1 ? 'spot' : 'spots'}!
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1411,7 +1464,7 @@ function Today() {
                         This is your first correct submission! 🎉
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </>
             )}

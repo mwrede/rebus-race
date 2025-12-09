@@ -57,6 +57,8 @@ function App() {
       if (autoLoggedIn) {
         // User is fully authenticated via auto-login
         setUsername(getUsername());
+        setShowUsernamePrompt(false);
+        setShowGoogleAuthPrompt(false);
         return;
       }
 
@@ -73,6 +75,8 @@ function App() {
       } else {
         // User is fully authenticated
         setUsername(getUsername());
+        setShowUsernamePrompt(false);
+        setShowGoogleAuthPrompt(false);
       }
     };
 
@@ -195,6 +199,8 @@ function App() {
   const handleUsernameComplete = (newUsername: string) => {
     setUsername(newUsername);
     setShowUsernamePrompt(false);
+    setShowGoogleAuthPrompt(false);
+    // Ensure user can navigate to today screen after authentication
   };
 
   const handleGoogleAuthComplete = () => {
