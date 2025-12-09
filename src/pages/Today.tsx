@@ -415,10 +415,6 @@ function Today() {
       );
 
       // Calculate streak: consecutive daily puzzles correct
-      // Get today's puzzle ID to exclude it from streak if not played
-      const todayPuzzle = puzzles?.find((p: { id: string; date: string }) => p.date.split('T')[0] === today);
-      const todayPuzzleId = todayPuzzle?.id;
-      
       const dailyPuzzles = puzzles?.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id)) || [];
       dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
 
@@ -439,6 +435,7 @@ function Today() {
       });
 
       let currentStreak = 0;
+      let foundWin = false;
       for (const puzzle of dailyPuzzles) {
         const result = submissionMap.get(puzzle.id);
         const puzzleDate = puzzle.date.split('T')[0];
@@ -447,6 +444,7 @@ function Today() {
         if (result === true) {
           // Win - continue streak
           currentStreak++;
+          foundWin = true;
         } else if (result === false) {
           // Loss - break streak
           break;
@@ -457,8 +455,8 @@ function Today() {
             continue;
           } else {
             // If it's a past puzzle and they didn't play, break streak (they missed a day)
-            // Only break if we've already found at least one win (to handle users who haven't played yet)
-            if (currentStreak > 0) {
+            // Only break if we've already found at least one win
+            if (foundWin) {
               break;
             }
           }
@@ -529,9 +527,18 @@ function Today() {
       // Calculate streaks for each username
       const streakMapByUsername = new Map<string, number>();
       
+      // Initialize streaks for all users in userStats (set to 0 by default)
+      // We'll calculate actual streaks below
+      allTimeSubmissions.forEach((submission: Submission) => {
+        if (submission.username && !streakMapByUsername.has(submission.username)) {
+          streakMapByUsername.set(submission.username, 0);
+        }
+      });
+      
       // Calculate actual streaks for users with daily puzzle submissions
       userSubmissionsForStreak.forEach((userData, username) => {
         let currentStreak = 0;
+        let foundWin = false;
         
         // Count consecutive wins from most recent puzzle backwards
         // Skip today's puzzle if not played, only break on losses or missed past days
@@ -543,6 +550,7 @@ function Today() {
           if (result === true) {
             // Win - continue streak
             currentStreak++;
+            foundWin = true;
           } else if (result === false) {
             // Loss - break streak
             break;
@@ -553,8 +561,8 @@ function Today() {
               continue;
             } else {
               // If it's a past puzzle and they didn't play, break streak (they missed a day)
-              // Only break if we've already found at least one win (to handle users who haven't played yet)
-              if (currentStreak > 0) {
+              // Only break if we've already found at least one win
+              if (foundWin) {
                 break;
               }
             }
@@ -562,7 +570,7 @@ function Today() {
         }
         
         streakMapByUsername.set(username, currentStreak);
-        console.log(`Streak for ${username}: ${currentStreak}, today: ${today}, todayPuzzleId: ${todayPuzzleId}`);
+        console.log(`Streak for ${username}: ${currentStreak}, today: ${today}, foundWin: ${foundWin}, submissions:`, Array.from(userData.submissions.entries()));
       });
 
       allTimeSubmissions.forEach((submission: Submission) => {
@@ -1849,21 +1857,40 @@ function Today() {
                 {incorrectPercentage.toFixed(1)}% of players also got it wrong
               </div>
             )}
-            {/* Reveal image with fade-in animation */}
+            {/* Reveal image with fade-in and fade-out animation */}
             <div className="mb-2 sm:mb-3 md:mb-4 animate-fade-in">
               <img
                 src={revealImagePath}
                 alt="Reveal"
                 className="w-full rounded-lg border-2 border-gray-300 max-h-[40vh] sm:max-h-[50vh] object-contain opacity-0"
                 onLoad={(e) => {
+                  const img = e.currentTarget;
                   // Trigger fade-in when image loads
-                  e.currentTarget.style.transition = 'opacity 1s ease-in';
-                  e.currentTarget.style.opacity = '1';
+                  img.style.transition = 'opacity 1s ease-in';
+                  img.style.opacity = '1';
+                  
+                  // Fade out after 6 seconds
+                  setTimeout(() => {
+                    img.style.transition = 'opacity 1s ease-out';
+                    img.style.opacity = '0';
+                    // Hide completely after fade-out completes
+                    setTimeout(() => {
+                      img.style.display = 'none';
+                    }, 1000);
+                  }, 6000);
                 }}
                 onError={(e) => {
                   // Hide image if it doesn't exist
                   e.currentTarget.style.display = 'none';
                 }}
+              />
+            </div>
+            {/* Greyed out puzzle image */}
+            <div className="mb-2 sm:mb-3 md:mb-4">
+              <img
+                src={puzzle?.image_url}
+                alt="Rebus puzzle"
+                className="w-full rounded-lg border-2 border-gray-300 opacity-60"
               />
             </div>
             {submission.is_correct && (

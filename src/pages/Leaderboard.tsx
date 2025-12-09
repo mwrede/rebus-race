@@ -193,10 +193,6 @@ function Leaderboard() {
       });
 
       // Get all daily puzzles ordered by date (newest first) for streak calculation
-      // Get today's puzzle ID to exclude it from streak if not played
-      const todayPuzzle = puzzles?.find((p: { id: string; date: string }) => p.date.split('T')[0] === today);
-      const todayPuzzleId = todayPuzzle?.id;
-      
       const dailyPuzzles = puzzles?.filter((p: { id: string; date: string }) => !archivePuzzleIds.has(p.id)) || [];
       dailyPuzzles.sort((a: { id: string; date: string }, b: { id: string; date: string }) => b.date.localeCompare(a.date));
 
@@ -248,9 +244,18 @@ function Leaderboard() {
       // Calculate streaks for each username
       const streakMapByUsername = new Map<string, number>();
       
+      // Initialize streaks for all users in userStats (set to 0 by default)
+      // We'll calculate actual streaks below
+      allTimeSubmissions.forEach((submission: Submission) => {
+        if (submission.username && !streakMapByUsername.has(submission.username)) {
+          streakMapByUsername.set(submission.username, 0);
+        }
+      });
+      
       // Calculate actual streaks for users with daily puzzle submissions
       userSubmissionsForStreak.forEach((userData, username) => {
         let currentStreak = 0;
+        let foundWin = false;
         
         // Count consecutive wins from most recent puzzle backwards
         // Skip today's puzzle if not played, only break on losses or missed past days
@@ -263,6 +268,7 @@ function Leaderboard() {
           if (result === true) {
             // Win - continue streak
             currentStreak++;
+            foundWin = true;
           } else if (result === false) {
             // Loss - break streak
             break;
@@ -273,8 +279,8 @@ function Leaderboard() {
               continue;
             } else {
               // If it's a past puzzle and they didn't play, break streak (they missed a day)
-              // Only break if we've already found at least one win (to handle users who haven't played yet)
-              if (currentStreak > 0) {
+              // Only break if we've already found at least one win
+              if (foundWin) {
                 break;
               }
             }
@@ -282,7 +288,7 @@ function Leaderboard() {
         }
         
         streakMapByUsername.set(username, currentStreak);
-        console.log(`Streak for ${username}: ${currentStreak}, today: ${today}, todayPuzzleId: ${todayPuzzleId}`);
+        console.log(`Streak for ${username}: ${currentStreak}, today: ${today}, foundWin: ${foundWin}, submissions:`, Array.from(userData.submissions.entries()));
       });
       
       console.log('Streak map size:', streakMapByUsername.size, 'User stats size:', userStats.size);

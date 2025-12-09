@@ -152,6 +152,7 @@ function App() {
 
       // Calculate streak: count consecutive wins from most recent puzzle backwards
       let currentStreak = 0;
+      let foundWin = false;
       for (const puzzle of dailyPuzzles) {
         const result = submissionMap.get(puzzle.id);
         const puzzleDate = puzzle.date.split('T')[0];
@@ -160,6 +161,7 @@ function App() {
         if (result === true) {
           // Win - continue streak
           currentStreak++;
+          foundWin = true;
         } else if (result === false) {
           // Loss - break streak
           break;
@@ -170,8 +172,8 @@ function App() {
             continue;
           } else {
             // If it's a past puzzle and they didn't play, break streak (they missed a day)
-            // Only break if we've already found at least one win (to handle users who haven't played yet)
-            if (currentStreak > 0) {
+            // Only break if we've already found at least one win
+            if (foundWin) {
               break;
             }
           }
