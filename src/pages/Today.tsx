@@ -1339,8 +1339,8 @@ function Today() {
         {dateStr}
       </h1>
 
-      {/* Puzzle image on reveal/results page */}
-      {(submitted || alreadyPlayed) && puzzle && (
+      {/* Puzzle image on reveal/results page - only show for newly submitted, not already played */}
+      {submitted && !alreadyPlayed && puzzle && (
         <div className="mb-3 sm:mb-4 md:mb-6">
           <img
             src={puzzle.image_url}
