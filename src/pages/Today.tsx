@@ -443,7 +443,7 @@ function Today() {
       }
       setStreak(currentStreak);
 
-      // Get all correct submissions, excluding archive puzzles
+      // Get ALL correct submissions (including archive puzzles for all-time leaderboard)
       const { data: submissions, error } = await supabase
         .from('submissions')
         .select('*')
@@ -452,10 +452,8 @@ function Today() {
 
       if (error) throw error;
 
-      // Filter out submissions from archive puzzles
-      const dailySubmissions = submissions?.filter(
-        (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
-      ) || [];
+      // Use ALL submissions for all-time leaderboard (don't filter out archive puzzles)
+      const allTimeSubmissions = submissions || [];
 
       // Get all submissions (both correct and incorrect) for daily puzzles to calculate streaks
       const { data: allSubmissions, error: allSubmissionsError } = await supabase
@@ -494,8 +492,16 @@ function Today() {
         }
       });
 
+      // Group by anon_id and calculate stats (using ALL submissions, not just daily)
+      const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();
+
       // Calculate streaks for each user
       const streakMap = new Map<string, number>();
+      
+      // Initialize streak map for all users in userStats (set to 0 by default)
+      // But first we need to populate userStats, so we'll do this after
+      
+      // Calculate actual streaks for users with daily puzzle submissions
       userSubmissionsForStreak.forEach((userData, anon_id) => {
         let currentStreak = 0;
         
@@ -517,10 +523,7 @@ function Today() {
         streakMap.set(anon_id, currentStreak);
       });
 
-      // Group by anon_id and calculate stats
-      const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();
-
-      dailySubmissions.forEach((submission: Submission) => {
+      allTimeSubmissions.forEach((submission: Submission) => {
         if (!submission.anon_id) return;
 
         if (!userStats.has(submission.anon_id)) {
@@ -536,6 +539,13 @@ function Today() {
         stats.puzzles.add(submission.puzzle_id);
         if (submission.username) {
           stats.username = submission.username;
+        }
+      });
+
+      // Initialize streak map for all users in userStats (set to 0 by default)
+      userStats.forEach((_, anon_id) => {
+        if (!streakMap.has(anon_id)) {
+          streakMap.set(anon_id, 0);
         }
       });
 
@@ -1365,7 +1375,7 @@ function Today() {
                       </button>
                       <Link
                         to="/leaderboard"
-                        className="inline-flex items-center gap-1 sm:gap-2 bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
+                        className="inline-flex items-center gap-1 sm:gap-2 bg-gray-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-gray-700 font-medium text-xs sm:text-sm md:text-base"
                       >
                         <span>🏆</span> <span>Go to Leaderboard</span>
                       </Link>
