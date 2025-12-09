@@ -4,7 +4,7 @@ import Today from './pages/Today';
 import Leaderboard from './pages/Leaderboard';
 import Archive from './pages/Archive';
 import ArchiveDetail from './pages/ArchiveDetail';
-import { getUsername, hasUsername, isFullyAuthenticated, hasGoogleAuth } from './lib/auth';
+import { getUsername, hasUsername, isFullyAuthenticated, hasGoogleAuth, getGoogleUser, setAnonId, setUsername as setUsernameInStorage } from './lib/auth';
 import UsernamePrompt from './components/UsernamePrompt';
 import GoogleAuthPrompt from './components/GoogleAuthPrompt';
 import UserMenu from './components/UserMenu';
@@ -22,20 +22,61 @@ function App() {
   const isConfigured = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_project_url';
 
   useEffect(() => {
-    // Check if user is fully authenticated (has both username and Google auth)
-    if (!isFullyAuthenticated()) {
-      // If user has username but no Google auth, show Google auth prompt
-      if (hasUsername() && !hasGoogleAuth()) {
-        setShowGoogleAuthPrompt(true);
-        setUsername(getUsername());
-      } else {
-        // Otherwise show username prompt (which will require Google auth first)
-        setShowUsernamePrompt(true);
+    // Check if we have Google auth stored and verify it exists in database
+    const checkExistingGoogleAuth = async () => {
+      const googleUser = getGoogleUser();
+      if (googleUser?.email) {
+        try {
+          const { data: existingUser } = await supabase
+            .from('users')
+            .select('anon_id, username')
+            .eq('google_email', googleUser.email)
+            .not('username', 'is', null)
+            .single();
+
+          if (existingUser && existingUser.username) {
+            // Auto-login with existing account
+            setAnonId(existingUser.anon_id);
+            localStorage.setItem('rebus_anon_id', existingUser.anon_id);
+            setUsernameInStorage(existingUser.username); // Set in localStorage
+            setUsername(existingUser.username); // Set in component state
+            return true; // User is authenticated
+          }
+        } catch (error) {
+          // User not found or error - continue with normal flow
+          console.log('No existing account found for Google email');
+        }
       }
-    } else {
-      // User is fully authenticated
-      setUsername(getUsername());
-    }
+      return false;
+    };
+
+    const initializeAuth = async () => {
+      // First check if we can auto-login with existing Google auth
+      const autoLoggedIn = await checkExistingGoogleAuth();
+      
+      if (autoLoggedIn) {
+        // User is fully authenticated via auto-login
+        setUsername(getUsername());
+        return;
+      }
+
+      // Check if user is fully authenticated (has both username and Google auth)
+      if (!isFullyAuthenticated()) {
+        // If user has username but no Google auth, show Google auth prompt
+        if (hasUsername() && !hasGoogleAuth()) {
+          setShowGoogleAuthPrompt(true);
+          setUsername(getUsername());
+        } else {
+          // Otherwise show username prompt (which will require Google auth first)
+          setShowUsernamePrompt(true);
+        }
+      } else {
+        // User is fully authenticated
+        setUsername(getUsername());
+      }
+    };
+
+    initializeAuth();
 
     // Load streak
     loadStreak();
