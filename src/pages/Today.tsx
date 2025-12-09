@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Puzzle, Submission } from '../types';
 import { incrementWin } from '../lib/stats';
-import { getUsername } from '../lib/auth';
+import { getUsername, getGoogleUser } from '../lib/auth';
 import { useTimer } from '../contexts/TimerContext';
 
 function Today() {
@@ -105,17 +105,57 @@ function Today() {
   };
 
   useEffect(() => {
-    // Get or create anonymous ID
-    let id = localStorage.getItem('rebus_anon_id');
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem('rebus_anon_id', id);
-    }
-    setAnonId(id);
-
-    // Load today's puzzle
-    loadTodayPuzzle();
-    checkUserEmail();
+    // Get or create anonymous ID, but first try to get it from database using Google email (works across devices)
+    const initializeAnonId = async () => {
+      let id: string | null = localStorage.getItem('rebus_anon_id');
+      const googleUser = getGoogleUser();
+      
+      // If user has Google auth, look up their anon_id from database (works across devices)
+      if (googleUser && googleUser.email) {
+        try {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('anon_id')
+            .eq('google_email', googleUser.email)
+            .single();
+          
+          if (userData && !userError && userData.anon_id) {
+            // Use the anon_id from the database (works across devices)
+            id = userData.anon_id;
+            if (id) {
+              setAnonId(id);
+              localStorage.setItem('rebus_anon_id', id);
+            }
+          } else if (!id) {
+            // No user found and no existing anon_id - create new one
+            id = crypto.randomUUID();
+            setAnonId(id);
+            localStorage.setItem('rebus_anon_id', id);
+          }
+        } catch (error) {
+          console.error('Error looking up user:', error);
+          // Fall back to existing anon_id or create new one
+          if (!id) {
+            id = crypto.randomUUID();
+            setAnonId(id);
+            localStorage.setItem('rebus_anon_id', id);
+          }
+        }
+      } else if (!id) {
+        // No Google auth and no existing anon_id - create new one
+        id = crypto.randomUUID();
+        setAnonId(id);
+        localStorage.setItem('rebus_anon_id', id);
+      } else {
+        setAnonId(id);
+      }
+      
+      // Load today's puzzle
+      loadTodayPuzzle();
+      checkUserEmail();
+    };
+    
+    initializeAnonId();
 
     // Save game state before page unload (refresh/close)
     const handleBeforeUnload = () => {
@@ -267,7 +307,28 @@ function Today() {
         setPuzzle(data);
         
         // Check if user has already played today
-        const anonId = localStorage.getItem('rebus_anon_id');
+        // First, get the user's anon_id from the users table using their Google email (works across devices)
+        let anonId = localStorage.getItem('rebus_anon_id');
+        const googleUser = getGoogleUser();
+        
+        if (googleUser && googleUser.email) {
+          // Look up user by Google email to get their anon_id (works across devices)
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('anon_id')
+            .eq('google_email', googleUser.email)
+            .single();
+          
+          if (userData && !userError && userData.anon_id) {
+            // Use the anon_id from the database (works across devices)
+            anonId = userData.anon_id;
+            if (anonId) {
+              setAnonId(anonId);
+              localStorage.setItem('rebus_anon_id', anonId);
+            }
+          }
+        }
+        
         if (anonId) {
           const { data: existingSubmission, error: submissionError } = await supabase
             .from('submissions')
@@ -1533,7 +1594,8 @@ function Today() {
 
                     {/* All-time leaderboard */}
                     {allTimeLeaderboardEntries.length > 0 && (
-                      <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <div className="mt-3 sm:mt-4">
+                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                         <div className="text-sm sm:text-base font-bold text-purple-700 mb-2">
                           All-Time Leaderboard
                         </div>
@@ -1571,6 +1633,7 @@ function Today() {
                             </tbody>
                           </table>
                         </div>
+                      </div>
                       </div>
                     )}
 
