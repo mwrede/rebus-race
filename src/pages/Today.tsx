@@ -1385,9 +1385,9 @@ function Today() {
                               Moved up {previousAllTimeRank - allTimeRank} {previousAllTimeRank - allTimeRank === 1 ? 'spot' : 'spots'}!
                             </div>
                           )}
-                          <div className="overflow-x-auto overflow-y-auto max-h-[120px]">
+                          <div className="overflow-x-auto">
                             <table className="w-full text-xs sm:text-sm min-w-[320px]">
-                              <thead className="sticky top-0 bg-purple-50">
+                              <thead className="bg-purple-50">
                                 <tr className="border-b border-purple-200">
                                   <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Rank</th>
                                   <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Username</th>
@@ -1905,9 +1905,9 @@ function Today() {
                         <div className="text-sm sm:text-base font-bold text-purple-700 mb-2">
                           All-Time Leaderboard
                         </div>
-                        <div className="overflow-x-auto overflow-y-auto max-h-[120px]">
+                        <div className="overflow-x-auto">
                           <table className="w-full text-xs sm:text-sm min-w-[320px]">
-                            <thead className="sticky top-0 bg-purple-50">
+                            <thead className="bg-purple-50">
                               <tr className="border-b border-purple-200">
                                 <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Rank</th>
                                 <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Username</th>
