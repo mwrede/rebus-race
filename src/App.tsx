@@ -292,13 +292,6 @@ function AppContent({
                 >
                   Today
                 </Link>
-                {username && (
-                  <UserMenu
-                    username={username}
-                    onLogout={handleLogout}
-                    onChangeUsername={handleChangeUsername}
-                  />
-                )}
                 {streak > 0 && (
                   <div className="text-[10px] sm:text-xs md:text-sm font-semibold text-orange-600 px-0.5 sm:px-1 md:px-2">
                     🔥 {streak}
@@ -318,6 +311,13 @@ function AppContent({
                 >
                   📚
                 </Link>
+                {username && (
+                  <UserMenu
+                    username={username}
+                    onLogout={handleLogout}
+                    onChangeUsername={handleChangeUsername}
+                  />
+                )}
               </div>
             </div>
           </div>

@@ -235,6 +235,13 @@ function Leaderboard() {
 
       // Calculate streaks for each user
       const streakMap = new Map<string, number>();
+      
+      // Initialize streak map for all users in userStats (set to 0 by default)
+      userStats.forEach((_, anon_id) => {
+        streakMap.set(anon_id, 0);
+      });
+      
+      // Calculate actual streaks for users with daily puzzle submissions
       userSubmissionsForStreak.forEach((userData, anon_id) => {
         let currentStreak = 0;
         
@@ -263,7 +270,7 @@ function Leaderboard() {
           const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
           const totalGuesses = stats.guesses.reduce((sum, guess) => sum + guess, 0);
           const averageGuesses = stats.guesses.length > 0 ? totalGuesses / stats.guesses.length : 0;
-          const streak = streakMap.get(anon_id) || 0;
+          const streak = streakMap.get(anon_id) ?? 0;
 
           return {
             anon_id,

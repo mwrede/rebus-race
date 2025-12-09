@@ -27,7 +27,7 @@ function Today() {
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [streak, setStreak] = useState<number>(0);
   const [todayLeaderboardEntries, setTodayLeaderboardEntries] = useState<Array<{ rank: number; username: string | null; time: number }>>([]);
-  const [allTimeLeaderboardEntries, setAllTimeLeaderboardEntries] = useState<Array<{ rank: number; username: string | null; wins: number; streak: number }>>([]);
+  const [allTimeLeaderboardEntries, setAllTimeLeaderboardEntries] = useState<Array<{ rank: number; username: string | null; wins: number; averageTime: number; streak: number }>>([]);
   const [averageTimeToday, setAverageTimeToday] = useState<number | null>(null);
   const [averageGuessesToday, setAverageGuessesToday] = useState<number | null>(null);
   const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
@@ -574,7 +574,7 @@ function Today() {
         setAllTimeRank(userRank);
 
         // Get mini leaderboard: person above, user, person below
-        const miniLeaderboard: Array<{ rank: number; username: string | null; wins: number; streak: number }> = [];
+        const miniLeaderboard: Array<{ rank: number; username: string | null; wins: number; averageTime: number; streak: number }> = [];
         
         // Person above (if exists)
         if (userEntry > 0) {
@@ -583,6 +583,7 @@ function Today() {
             rank: userRank - 1,
             username: above.username,
             wins: above.puzzlesWon,
+            averageTime: above.averageTime,
             streak: above.streak,
           });
         }
@@ -593,6 +594,7 @@ function Today() {
           rank: userRank,
           username: user.username,
           wins: user.puzzlesWon,
+          averageTime: user.averageTime,
           streak: user.streak,
         });
         
@@ -603,6 +605,7 @@ function Today() {
             rank: userRank + 1,
             username: below.username,
             wins: below.puzzlesWon,
+            averageTime: below.averageTime,
             streak: below.streak,
           });
         }
@@ -1165,7 +1168,7 @@ function Today() {
   return (
     <div className="max-w-2xl mx-auto px-2 sm:px-4 pb-2 sm:pb-4">
       <h1 
-        className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-1 sm:mb-1.5 text-center"
+        className="text-4xl mb-1 sm:mb-1.5 text-center"
         style={{
           fontFamily: '"Luckiest Guy", cursive',
           fontWeight: 'normal',
@@ -1178,18 +1181,139 @@ function Today() {
       </h1>
 
       {alreadyPlayed && previousSubmission && (
-        <div className="bg-gray-100 rounded-lg shadow-md p-3 sm:p-4 md:p-6 mb-3 sm:mb-4 md:mb-6 opacity-75">
+        <div className="mb-3 sm:mb-4 md:mb-6">
           <div className="text-center mb-2 sm:mb-3 md:mb-4">
             <div className="text-xs sm:text-sm font-medium text-gray-600 mb-1 sm:mb-2">
-              You've already played today's puzzle
+              Your Result from Today
             </div>
-            <div className="mb-2 sm:mb-3 md:mb-4">
-              <img
-                src={puzzle?.image_url}
-                alt="Rebus puzzle"
-                className="w-full rounded-lg border-2 border-gray-300 opacity-60"
-              />
+          </div>
+          <div className="text-center mb-2 sm:mb-3">
+            <div
+              className={`text-2xl sm:text-3xl md:text-4xl mb-1.5 sm:mb-2 md:mb-3 ${
+                previousSubmission.is_correct ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
+              {previousSubmission.is_correct ? '✓ Correct!' : '✗ Incorrect'}
             </div>
+            <div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
+              {previousSubmission.is_correct
+                ? null
+                : `The correct answer was: ${puzzle?.answer}`}
+            </div>
+            {!previousSubmission.is_correct && incorrectPercentage !== null && (
+              <div className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3">
+                {incorrectPercentage.toFixed(1)}% of players also got it wrong
+              </div>
+            )}
+            {previousSubmission.is_correct && (
+              <>
+                {loadingStats ? (
+                  <div className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-4">
+                    Loading your ranking...
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-3 sm:space-y-4">
+                    {/* Time with average */}
+                    <div className="text-center text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
+                      <span>{(previousSubmission.time_ms / 1000).toFixed(2)}s</span>
+                      {averageTimeToday !== null && (
+                        <span className="text-blue-600 text-sm sm:text-base md:text-lg">
+                          {' '}(Avg: {(averageTimeToday / 1000).toFixed(2)}s)
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Number of guesses with average */}
+                    {previousSubmission.guess_count && (
+                      <div className="text-center text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
+                        <span>{previousSubmission.guess_count} {previousSubmission.guess_count === 1 ? 'guess' : 'guesses'}</span>
+                        {averageGuessesToday !== null && (
+                          <span className="text-blue-600 text-sm sm:text-base md:text-lg">
+                            {' '}(Avg: {averageGuessesToday.toFixed(1)})
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Streak */}
+                    <div className="text-base sm:text-lg font-semibold text-orange-600">
+                      🔥 Streak: {streak} {streak === 1 ? 'day' : 'days'}
+                    </div>
+
+                    {/* Today's leaderboard */}
+                    {todayLeaderboardEntries.length > 0 && (
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="text-sm sm:text-base font-bold text-blue-700 mb-2">
+                          Today's Leaderboard
+                        </div>
+                        <table className="w-full text-xs sm:text-sm">
+                          <thead>
+                            <tr className="border-b border-blue-200">
+                              <th className="text-left py-1 px-2 font-semibold text-blue-700">Rank</th>
+                              <th className="text-left py-1 px-2 font-semibold text-blue-700">Username</th>
+                              <th className="text-right py-1 px-2 font-semibold text-blue-700">Time</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {todayLeaderboardEntries.map((entry, idx) => (
+                              <tr
+                                key={idx}
+                                className={entry.rank === rank ? 'bg-blue-100 font-semibold' : ''}
+                              >
+                                <td className="py-1 px-2">{entry.rank}</td>
+                                <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
+                                <td className="py-1 px-2 text-right">{(entry.time / 1000).toFixed(2)}s</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* All-time leaderboard */}
+                    {allTimeLeaderboardEntries.length > 0 && (
+                      <div className="mt-3 sm:mt-4">
+                        <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                          <div className="text-sm sm:text-base font-bold text-purple-700 mb-2">
+                            All-Time Leaderboard
+                          </div>
+                          {previousAllTimeRank !== null && allTimeRank !== null && previousAllTimeRank > allTimeRank && (
+                            <div className="text-xs sm:text-sm text-green-600 font-semibold mb-2">
+                              Moved up {previousAllTimeRank - allTimeRank} {previousAllTimeRank - allTimeRank === 1 ? 'spot' : 'spots'}!
+                            </div>
+                          )}
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs sm:text-sm min-w-[320px]">
+                              <thead>
+                                <tr className="border-b border-purple-200">
+                                  <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Rank</th>
+                                  <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Username</th>
+                                  <th className="text-right py-1 px-1 sm:px-2 font-semibold text-purple-700">Avg Time</th>
+                                  <th className="text-right py-1 px-1 sm:px-2 font-semibold text-purple-700">Games Won</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {allTimeLeaderboardEntries.map((entry, idx) => (
+                                  <tr
+                                    key={idx}
+                                    className={allTimeRank !== null && entry.rank === allTimeRank ? 'bg-purple-100 font-semibold' : ''}
+                                  >
+                                    <td className="py-1 px-1 sm:px-2">{entry.rank}</td>
+                                    <td className="py-1 px-1 sm:px-2 truncate max-w-[80px] sm:max-w-none">{entry.username || 'Anonymous'}</td>
+                                    <td className="py-1 px-1 sm:px-2 text-right">{(entry.averageTime / 1000).toFixed(2)}s</td>
+                                    <td className="py-1 px-1 sm:px-2 text-right">{entry.wins}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1605,13 +1729,13 @@ function Today() {
                           </div>
                         )}
                         <div className="overflow-x-auto">
-                          <table className="w-full text-xs sm:text-sm min-w-[280px]">
+                          <table className="w-full text-xs sm:text-sm min-w-[320px]">
                             <thead>
                               <tr className="border-b border-purple-200">
                                 <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Rank</th>
                                 <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Username</th>
-                                <th className="text-right py-1 px-1 sm:px-2 font-semibold text-purple-700">Wins</th>
-                                <th className="text-right py-1 px-1 sm:px-2 font-semibold text-purple-700">Streak</th>
+                                <th className="text-right py-1 px-1 sm:px-2 font-semibold text-purple-700">Avg Time</th>
+                                <th className="text-right py-1 px-1 sm:px-2 font-semibold text-purple-700">Games Won</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1622,12 +1746,8 @@ function Today() {
                                 >
                                   <td className="py-1 px-1 sm:px-2">{entry.rank}</td>
                                   <td className="py-1 px-1 sm:px-2 truncate max-w-[80px] sm:max-w-none">{entry.username || 'Anonymous'}</td>
+                                  <td className="py-1 px-1 sm:px-2 text-right">{(entry.averageTime / 1000).toFixed(2)}s</td>
                                   <td className="py-1 px-1 sm:px-2 text-right">{entry.wins}</td>
-                                  <td className="py-1 px-1 sm:px-2 text-right">
-                                    <span className="text-orange-600 font-semibold">
-                                      {entry.streak > 0 ? `🔥 ${entry.streak}` : '—'}
-                                    </span>
-                                  </td>
                                 </tr>
                               ))}
                             </tbody>
