@@ -1088,7 +1088,11 @@ function Today() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Prevent multiple submissions - check and set immediately
-    if (!puzzle || !answer.trim() || submitted || isSubmitting) return;
+    console.log('handleSubmit called:', { puzzle: !!puzzle, answer: answer.trim(), submitted, isSubmitting });
+    if (!puzzle || !answer.trim() || submitted || isSubmitting) {
+      console.log('Early return from handleSubmit:', { puzzle: !!puzzle, answerTrimmed: !!answer.trim(), submitted, isSubmitting });
+      return;
+    }
     
     // Set submitting state IMMEDIATELY to prevent double-clicks/race conditions
     setIsSubmitting(true);
@@ -1132,6 +1136,20 @@ function Today() {
           // Already submitted - don't create duplicate
           console.log('Submission already exists, skipping duplicate');
           setIsSubmitting(false);
+          setSubmitted(true);
+          // Load the existing submission data
+          const { data: existingData } = await supabase
+            .from('submissions')
+            .select('*')
+            .eq('id', existingSubmission.id)
+            .single();
+          if (existingData) {
+            setSubmission(existingData);
+            if (existingData.is_correct) {
+              await loadRankingAndPastResults(puzzle.id, existingData.id, existingData.time_ms);
+            }
+            await loadAllTimeStats();
+          }
           return;
         }
 
@@ -1209,6 +1227,18 @@ function Today() {
                   // Already submitted - don't create duplicate
                   console.log('Submission already exists, skipping duplicate');
                   setIsSubmitting(false);
+                  setSubmitted(true);
+                  // Load the existing submission data
+                  const { data: existingData } = await supabase
+                    .from('submissions')
+                    .select('*')
+                    .eq('id', existingSubmission.id)
+                    .single();
+                  if (existingData) {
+                    setSubmission(existingData);
+                    await loadIncorrectPercentage(puzzle.id);
+                    await loadAllTimeStats();
+                  }
                   return;
                 }
 
