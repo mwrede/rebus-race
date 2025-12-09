@@ -27,7 +27,7 @@ function Today() {
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [streak, setStreak] = useState<number>(0);
   const [todayLeaderboardEntries, setTodayLeaderboardEntries] = useState<Array<{ rank: number; username: string | null; time: number }>>([]);
-  const [allTimeLeaderboardEntries, setAllTimeLeaderboardEntries] = useState<Array<{ rank: number; username: string | null; wins: number }>>([]);
+  const [allTimeLeaderboardEntries, setAllTimeLeaderboardEntries] = useState<Array<{ rank: number; username: string | null; wins: number; streak: number }>>([]);
   const [averageTimeToday, setAverageTimeToday] = useState<number | null>(null);
   const [averageGuessesToday, setAverageGuessesToday] = useState<number | null>(null);
   const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
@@ -396,6 +396,66 @@ function Today() {
         (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
       ) || [];
 
+      // Get all submissions (both correct and incorrect) for daily puzzles to calculate streaks
+      const { data: allSubmissions, error: allSubmissionsError } = await supabase
+        .from('submissions')
+        .select('anon_id, puzzle_id, is_correct, username, created_at')
+        .order('created_at', { ascending: false });
+
+      if (allSubmissionsError) throw allSubmissionsError;
+
+      // Filter to only daily puzzles
+      const dailyAllSubmissions = (allSubmissions || []).filter(
+        (s: Submission) => !archivePuzzleIds.has(s.puzzle_id)
+      );
+
+      // Group submissions by anon_id for streak calculation
+      const userSubmissionsForStreak = new Map<string, { username: string | null; submissions: Map<string, boolean> }>();
+      
+      dailyAllSubmissions.forEach((s: Submission) => {
+        if (!s.anon_id) return;
+        
+        if (!userSubmissionsForStreak.has(s.anon_id)) {
+          userSubmissionsForStreak.set(s.anon_id, {
+            username: s.username || null,
+            submissions: new Map(),
+          });
+        }
+        
+        const userData = userSubmissionsForStreak.get(s.anon_id)!;
+        // Only keep the most recent submission for each puzzle
+        if (!userData.submissions.has(s.puzzle_id)) {
+          userData.submissions.set(s.puzzle_id, s.is_correct);
+        }
+        // Update username if available
+        if (s.username) {
+          userData.username = s.username;
+        }
+      });
+
+      // Calculate streaks for each user
+      const streakMap = new Map<string, number>();
+      userSubmissionsForStreak.forEach((userData, anon_id) => {
+        let currentStreak = 0;
+        
+        // Count consecutive wins from most recent puzzle backwards
+        for (const puzzle of dailyPuzzles) {
+          const result = userData.submissions.get(puzzle.id);
+          if (result === true) {
+            // Win - continue streak
+            currentStreak++;
+          } else if (result === false) {
+            // Loss - break streak
+            break;
+          } else {
+            // No submission for this puzzle - break streak
+            break;
+          }
+        }
+        
+        streakMap.set(anon_id, currentStreak);
+      });
+
       // Group by anon_id and calculate stats
       const userStats = new Map<string, { username: string | null; times: number[]; puzzles: Set<string> }>();
 
@@ -423,12 +483,14 @@ function Today() {
         .map(([anon_id, stats]) => {
           const totalTime = stats.times.reduce((sum, time) => sum + time, 0);
           const averageTime = stats.times.length > 0 ? totalTime / stats.times.length : 0;
+          const streak = streakMap.get(anon_id) || 0;
 
           return {
             anon_id,
             username: stats.username,
             averageTime,
             puzzlesWon: stats.puzzles.size,
+            streak,
           };
         })
         .filter((entry) => entry.puzzlesWon >= 1)
@@ -451,7 +513,7 @@ function Today() {
         setAllTimeRank(userRank);
 
         // Get mini leaderboard: person above, user, person below
-        const miniLeaderboard: Array<{ rank: number; username: string | null; wins: number }> = [];
+        const miniLeaderboard: Array<{ rank: number; username: string | null; wins: number; streak: number }> = [];
         
         // Person above (if exists)
         if (userEntry > 0) {
@@ -460,6 +522,7 @@ function Today() {
             rank: userRank - 1,
             username: above.username,
             wins: above.puzzlesWon,
+            streak: above.streak,
           });
         }
         
@@ -469,6 +532,7 @@ function Today() {
           rank: userRank,
           username: user.username,
           wins: user.puzzlesWon,
+          streak: user.streak,
         });
         
         // Person below (if exists)
@@ -478,6 +542,7 @@ function Today() {
             rank: userRank + 1,
             username: below.username,
             wins: below.puzzlesWon,
+            streak: below.streak,
           });
         }
         
@@ -1411,7 +1476,7 @@ function Today() {
                   <div className="mt-4 space-y-3 sm:space-y-4">
                     {/* Time with average */}
                     <div className="text-center text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
-                      <span>Your time: {(submission.time_ms / 1000).toFixed(2)}s</span>
+                      <span>{(submission.time_ms / 1000).toFixed(2)}s</span>
                       {averageTimeToday !== null && (
                         <span className="text-blue-600 text-sm sm:text-base md:text-lg">
                           {' '}(Avg: {(averageTimeToday / 1000).toFixed(2)}s)
@@ -1477,27 +1542,35 @@ function Today() {
                             Moved up {previousAllTimeRank - allTimeRank} {previousAllTimeRank - allTimeRank === 1 ? 'spot' : 'spots'}!
                           </div>
                         )}
-                        <table className="w-full text-xs sm:text-sm">
-                          <thead>
-                            <tr className="border-b border-purple-200">
-                              <th className="text-left py-1 px-2 font-semibold text-purple-700">Rank</th>
-                              <th className="text-left py-1 px-2 font-semibold text-purple-700">Username</th>
-                              <th className="text-right py-1 px-2 font-semibold text-purple-700">Wins</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {allTimeLeaderboardEntries.map((entry, idx) => (
-                              <tr
-                                key={idx}
-                                className={allTimeRank !== null && entry.rank === allTimeRank ? 'bg-purple-100 font-semibold' : ''}
-                              >
-                                <td className="py-1 px-2">{entry.rank}</td>
-                                <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
-                                <td className="py-1 px-2 text-right">{entry.wins}</td>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs sm:text-sm min-w-[280px]">
+                            <thead>
+                              <tr className="border-b border-purple-200">
+                                <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Rank</th>
+                                <th className="text-left py-1 px-1 sm:px-2 font-semibold text-purple-700">Username</th>
+                                <th className="text-right py-1 px-1 sm:px-2 font-semibold text-purple-700">Wins</th>
+                                <th className="text-right py-1 px-1 sm:px-2 font-semibold text-purple-700">Streak</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {allTimeLeaderboardEntries.map((entry, idx) => (
+                                <tr
+                                  key={idx}
+                                  className={allTimeRank !== null && entry.rank === allTimeRank ? 'bg-purple-100 font-semibold' : ''}
+                                >
+                                  <td className="py-1 px-1 sm:px-2">{entry.rank}</td>
+                                  <td className="py-1 px-1 sm:px-2 truncate max-w-[80px] sm:max-w-none">{entry.username || 'Anonymous'}</td>
+                                  <td className="py-1 px-1 sm:px-2 text-right">{entry.wins}</td>
+                                  <td className="py-1 px-1 sm:px-2 text-right">
+                                    <span className="text-orange-600 font-semibold">
+                                      {entry.streak > 0 ? `🔥 ${entry.streak}` : '—'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )}
 
