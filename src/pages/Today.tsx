@@ -393,6 +393,8 @@ function Today() {
         setPreviousAllTimeRank(allTimeRank);
       }
 
+      console.log('Loading all-time stats, anonId:', anonId);
+
       // Get today's date in local timezone (YYYY-MM-DD format) - same as loadTodayPuzzle
       const now = new Date();
       const year = now.getFullYear();
@@ -577,8 +579,11 @@ function Today() {
           return a.averageTime - b.averageTime;
         });
 
+      console.log('All-time leaderboard entries calculated:', entries.length, 'anonId:', anonId);
+
       // Find user's rank
       const userEntry = entries.findIndex((entry) => entry.anon_id === anonId);
+      console.log('User entry index:', userEntry);
       if (userEntry !== -1) {
         const userRank = userEntry + 1;
         setAllTimeRank(userRank);
@@ -621,6 +626,19 @@ function Today() {
         }
         
         setAllTimeLeaderboardEntries(miniLeaderboard);
+      } else if (entries.length > 0) {
+        // User not found in leaderboard, but there are entries - show top 3
+        const topEntries = entries.slice(0, 3).map((entry, idx) => ({
+          rank: idx + 1,
+          username: entry.username,
+          wins: entry.puzzlesWon,
+          averageTime: entry.averageTime,
+          streak: entry.streak,
+        }));
+        setAllTimeLeaderboardEntries(topEntries);
+      } else {
+        // No entries at all
+        setAllTimeLeaderboardEntries([]);
       }
     } catch (error) {
       console.error('Error loading all-time stats:', error);
@@ -1955,7 +1973,7 @@ function Today() {
               </button>
               <Link
                 to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-gray-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-gray-700 font-medium text-xs sm:text-sm md:text-base"
               >
                 <span>🏆</span> <span>Go to Leaderboard</span>
               </Link>
@@ -2019,7 +2037,7 @@ function Today() {
               </button>
               <Link
                 to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-gray-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-gray-700 font-medium text-xs sm:text-sm md:text-base"
               >
                 <span>🏆</span> <span>Go to Leaderboard</span>
               </Link>
@@ -2070,7 +2088,7 @@ function Today() {
               </button>
               <Link
                 to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-purple-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-purple-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 sm:gap-2 bg-gray-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-gray-700 font-medium text-xs sm:text-sm md:text-base"
               >
                 <span>🏆</span> <span>Go to Leaderboard</span>
               </Link>
