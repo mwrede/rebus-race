@@ -1087,7 +1087,11 @@ function Today() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Prevent multiple submissions - check and set immediately
     if (!puzzle || !answer.trim() || submitted || isSubmitting) return;
+    
+    // Set submitting state IMMEDIATELY to prevent double-clicks/race conditions
+    setIsSubmitting(true);
 
     const isCorrect = answer.trim().toLowerCase() === puzzle.answer.toLowerCase();
     const currentAnswer = answer.trim();
@@ -1098,7 +1102,6 @@ function Today() {
 
     if (isCorrect) {
       // Correct answer - submit immediately
-      setIsSubmitting(true);
       const endTime = Date.now();
       const timeMs = startTime ? endTime - startTime : 0;
       
@@ -1116,6 +1119,22 @@ function Today() {
       }
 
       try {
+        // Check if user has already submitted for this puzzle (prevent duplicates)
+        const { data: existingSubmission } = await supabase
+          .from('submissions')
+          .select('id')
+          .eq('puzzle_id', puzzle.id)
+          .eq('anon_id', anonId)
+          .eq('is_correct', true)
+          .maybeSingle();
+
+        if (existingSubmission) {
+          // Already submitted - don't create duplicate
+          console.log('Submission already exists, skipping duplicate');
+          setIsSubmitting(false);
+          return;
+        }
+
         const username = getUsername();
         const { data, error } = await supabase
           .from('submissions')
@@ -1153,6 +1172,8 @@ function Today() {
       }
     } else {
       // Wrong answer - add to wrong guesses
+      // Reset isSubmitting since user can continue guessing
+      setIsSubmitting(false);
       const newWrongGuesses = [...wrongGuesses, currentAnswer];
       setWrongGuesses(newWrongGuesses);
       const newGuessCount = newWrongGuesses.length;
@@ -1161,6 +1182,7 @@ function Today() {
 
       // If they've used all 5 guesses, submit as incorrect
       if (newGuessCount >= MAX_GUESSES) {
+        // Set submitting again for final submission
         setIsSubmitting(true);
         const endTime = Date.now();
         const timeMs = startTime ? endTime - startTime : 0;
@@ -1175,6 +1197,21 @@ function Today() {
         }
 
         try {
+                // Check if user has already submitted for this puzzle (prevent duplicates)
+                const { data: existingSubmission } = await supabase
+                  .from('submissions')
+                  .select('id')
+                  .eq('puzzle_id', puzzle.id)
+                  .eq('anon_id', anonId)
+                  .maybeSingle();
+
+                if (existingSubmission) {
+                  // Already submitted - don't create duplicate
+                  console.log('Submission already exists, skipping duplicate');
+                  setIsSubmitting(false);
+                  return;
+                }
+
           const username = getUsername();
           const { data, error } = await supabase
             .from('submissions')
