@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { getGoogleUser, setGoogleUser, getAnonId, getUsername } from '../lib/auth';
+import { setGoogleUser, getAnonId, getUsername } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 
 interface GoogleAuthPromptProps {
