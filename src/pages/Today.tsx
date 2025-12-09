@@ -17,7 +17,6 @@ function Today() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [anonId, setAnonId] = useState<string>('');
   const [rank, setRank] = useState<number | null>(null);
-  const [totalCorrect, setTotalCorrect] = useState<number>(0);
   const [pastSubmissions, setPastSubmissions] = useState<Submission[]>([]);
   const [loadingStats, setLoadingStats] = useState(false);
   const [alreadyPlayed, setAlreadyPlayed] = useState(false);
@@ -27,6 +26,10 @@ function Today() {
   const [previousAllTimeRank, setPreviousAllTimeRank] = useState<number | null>(null);
   const [incorrectPercentage, setIncorrectPercentage] = useState<number | null>(null);
   const [streak, setStreak] = useState<number>(0);
+  const [todayLeaderboardEntries, setTodayLeaderboardEntries] = useState<Array<{ rank: number; username: string | null; time: number }>>([]);
+  const [allTimeLeaderboardEntries, setAllTimeLeaderboardEntries] = useState<Array<{ rank: number; username: string | null; wins: number }>>([]);
+  const [averageTimeToday, setAverageTimeToday] = useState<number | null>(null);
+  const [averageGuessesToday, setAverageGuessesToday] = useState<number | null>(null);
   const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
   const [guessCount, setGuessCount] = useState(0);
   const [showHintConfirmation, setShowHintConfirmation] = useState(false);
@@ -441,7 +444,41 @@ function Today() {
       // Find user's rank
       const userEntry = entries.findIndex((entry) => entry.anon_id === anonId);
       if (userEntry !== -1) {
-        setAllTimeRank(userEntry + 1);
+        const userRank = userEntry + 1;
+        setAllTimeRank(userRank);
+
+        // Get mini leaderboard: person above, user, person below
+        const miniLeaderboard: Array<{ rank: number; username: string | null; wins: number }> = [];
+        
+        // Person above (if exists)
+        if (userEntry > 0) {
+          const above = entries[userEntry - 1];
+          miniLeaderboard.push({
+            rank: userRank - 1,
+            username: above.username,
+            wins: above.puzzlesWon,
+          });
+        }
+        
+        // User
+        const user = entries[userEntry];
+        miniLeaderboard.push({
+          rank: userRank,
+          username: user.username,
+          wins: user.puzzlesWon,
+        });
+        
+        // Person below (if exists)
+        if (userEntry < entries.length - 1) {
+          const below = entries[userEntry + 1];
+          miniLeaderboard.push({
+            rank: userRank + 1,
+            username: below.username,
+            wins: below.puzzlesWon,
+          });
+        }
+        
+        setAllTimeLeaderboardEntries(miniLeaderboard);
       }
     } catch (error) {
       console.error('Error loading all-time stats:', error);
@@ -717,11 +754,59 @@ function Today() {
 
       if (allError) throw allError;
 
+      // Calculate average time and average guesses for today's puzzle
+      if (allSubmissions && allSubmissions.length > 0) {
+        const totalTime = allSubmissions.reduce((sum: number, s: Submission) => sum + s.time_ms, 0);
+        const avgTime = totalTime / allSubmissions.length;
+        setAverageTimeToday(avgTime);
+
+        const submissionsWithGuesses = allSubmissions.filter((s: Submission) => s.guess_count !== null && s.guess_count !== undefined);
+        if (submissionsWithGuesses.length > 0) {
+          const totalGuesses = submissionsWithGuesses.reduce((sum: number, s: Submission) => sum + (s.guess_count || 0), 0);
+          const avgGuesses = totalGuesses / submissionsWithGuesses.length;
+          setAverageGuessesToday(avgGuesses);
+        }
+      }
+
       // Find user's rank (1-indexed)
-      const userRank =
-        allSubmissions?.findIndex((s: Submission) => s.id === submissionId) + 1 || null;
+      const userIndex = allSubmissions?.findIndex((s: Submission) => s.id === submissionId) ?? -1;
+      const userRank = userIndex !== -1 ? userIndex + 1 : null;
       setRank(userRank);
-      setTotalCorrect(allSubmissions?.length || 0);
+
+      // Get mini leaderboard: person above, user, person below
+      if (userIndex !== -1 && allSubmissions) {
+        const miniLeaderboard: Array<{ rank: number; username: string | null; time: number }> = [];
+        
+        // Person above (if exists)
+        if (userIndex > 0) {
+          const above = allSubmissions[userIndex - 1];
+          miniLeaderboard.push({
+            rank: userIndex,
+            username: above.username,
+            time: above.time_ms,
+          });
+        }
+        
+        // User
+        const user = allSubmissions[userIndex];
+        miniLeaderboard.push({
+          rank: userRank!,
+          username: user.username,
+          time: user.time_ms,
+        });
+        
+        // Person below (if exists)
+        if (userIndex < allSubmissions.length - 1) {
+          const below = allSubmissions[userIndex + 1];
+          miniLeaderboard.push({
+            rank: userRank! + 1,
+            username: below.username,
+            time: below.time_ms,
+          });
+        }
+        
+        setTodayLeaderboardEntries(miniLeaderboard);
+      }
 
       // Get today's date in local timezone (YYYY-MM-DD format) - same as loadTodayPuzzle
       const now = new Date();
@@ -1305,7 +1390,7 @@ function Today() {
             </div>
             <div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
               {submission.is_correct
-                ? `Your time: ${(submission.time_ms / 1000).toFixed(2)}s`
+                ? null
                 : `The correct answer was: ${puzzle?.answer}`}
             </div>
             {!submission.is_correct && incorrectPercentage !== null && (
@@ -1321,15 +1406,25 @@ function Today() {
                   </div>
                 ) : (
                   <div className="mt-4 space-y-3 sm:space-y-4">
-                    {/* Time */}
-                    <div className="text-base sm:text-lg font-semibold text-gray-900">
-                      Your time: {(submission.time_ms / 1000).toFixed(2)}s
+                    {/* Time with average */}
+                    <div className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <span>Your time: {(submission.time_ms / 1000).toFixed(2)}s</span>
+                      {averageTimeToday !== null && (
+                        <span className="text-blue-600 text-sm font-normal">
+                          (Avg: {(averageTimeToday / 1000).toFixed(2)}s)
+                        </span>
+                      )}
                     </div>
 
-                    {/* Number of guesses */}
+                    {/* Number of guesses with average */}
                     {submission.guess_count && (
-                      <div className="text-base sm:text-lg font-semibold text-gray-900">
-                        {submission.guess_count} {submission.guess_count === 1 ? 'guess' : 'guesses'}
+                      <div className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <span>{submission.guess_count} {submission.guess_count === 1 ? 'guess' : 'guesses'}</span>
+                        {averageGuessesToday !== null && (
+                          <span className="text-sm font-normal text-gray-600">
+                            (Avg: {averageGuessesToday.toFixed(1)})
+                          </span>
+                        )}
                       </div>
                     )}
 
@@ -1339,34 +1434,67 @@ function Today() {
                     </div>
 
                     {/* Today's leaderboard */}
-                    {rank !== null && (
+                    {todayLeaderboardEntries.length > 0 && (
                       <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="text-sm sm:text-base font-bold text-blue-700 mb-1">
+                        <div className="text-sm sm:text-base font-bold text-blue-700 mb-2">
                           Today's Leaderboard
                         </div>
-                        <div className="text-lg sm:text-xl font-bold text-blue-600">
-                          Rank #{rank}
-                        </div>
-                        <div className="text-xs sm:text-sm text-gray-600">
-                          out of {totalCorrect} correct {totalCorrect === 1 ? 'submission' : 'submissions'}
-                        </div>
+                        <table className="w-full text-xs sm:text-sm">
+                          <thead>
+                            <tr className="border-b border-blue-200">
+                              <th className="text-left py-1 px-2 font-semibold text-blue-700">Rank</th>
+                              <th className="text-left py-1 px-2 font-semibold text-blue-700">Username</th>
+                              <th className="text-right py-1 px-2 font-semibold text-blue-700">Time</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {todayLeaderboardEntries.map((entry, idx) => (
+                              <tr
+                                key={idx}
+                                className={entry.rank === rank ? 'bg-blue-100 font-semibold' : ''}
+                              >
+                                <td className="py-1 px-2">{entry.rank}</td>
+                                <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
+                                <td className="py-1 px-2 text-right">{(entry.time / 1000).toFixed(2)}s</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
 
                     {/* All-time leaderboard */}
-                    {allTimeRank !== null && (
+                    {allTimeLeaderboardEntries.length > 0 && (
                       <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                        <div className="text-sm sm:text-base font-bold text-purple-700 mb-1">
+                        <div className="text-sm sm:text-base font-bold text-purple-700 mb-2">
                           All-Time Leaderboard
                         </div>
-                        <div className="text-lg sm:text-xl font-bold text-purple-600">
-                          Rank #{allTimeRank}
-                        </div>
-                        {previousAllTimeRank !== null && previousAllTimeRank > allTimeRank && (
-                          <div className="text-xs sm:text-sm text-green-600 font-semibold mt-1">
+                        {previousAllTimeRank !== null && allTimeRank !== null && previousAllTimeRank > allTimeRank && (
+                          <div className="text-xs sm:text-sm text-green-600 font-semibold mb-2">
                             Moved up {previousAllTimeRank - allTimeRank} {previousAllTimeRank - allTimeRank === 1 ? 'spot' : 'spots'}!
                           </div>
                         )}
+                        <table className="w-full text-xs sm:text-sm">
+                          <thead>
+                            <tr className="border-b border-purple-200">
+                              <th className="text-left py-1 px-2 font-semibold text-purple-700">Rank</th>
+                              <th className="text-left py-1 px-2 font-semibold text-purple-700">Username</th>
+                              <th className="text-right py-1 px-2 font-semibold text-purple-700">Wins</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allTimeLeaderboardEntries.map((entry, idx) => (
+                              <tr
+                                key={idx}
+                                className={allTimeRank !== null && entry.rank === allTimeRank ? 'bg-purple-100 font-semibold' : ''}
+                              >
+                                <td className="py-1 px-2">{entry.rank}</td>
+                                <td className="py-1 px-2">{entry.username || 'Anonymous'}</td>
+                                <td className="py-1 px-2 text-right">{entry.wins}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     )}
 
