@@ -19,3 +19,4 @@ WHERE opt_in_texts = true
   AND phone_number IS NOT NULL
   AND phone_verified = true;
 
+

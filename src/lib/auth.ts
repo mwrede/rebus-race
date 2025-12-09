@@ -58,3 +58,11 @@ export function setAnonId(id: string): void {
   localStorage.setItem(ANON_ID_KEY, id);
 }
 
+export function hasGoogleAuth(): boolean {
+  return !!getGoogleUser();
+}
+
+export function isFullyAuthenticated(): boolean {
+  return hasUsername() && hasGoogleAuth();
+}
+

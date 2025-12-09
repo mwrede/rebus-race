@@ -4,8 +4,9 @@ import Today from './pages/Today';
 import Leaderboard from './pages/Leaderboard';
 import Archive from './pages/Archive';
 import ArchiveDetail from './pages/ArchiveDetail';
-import { getUsername, hasUsername } from './lib/auth';
+import { getUsername, hasUsername, isFullyAuthenticated, hasGoogleAuth } from './lib/auth';
 import UsernamePrompt from './components/UsernamePrompt';
+import GoogleAuthPrompt from './components/GoogleAuthPrompt';
 import UserMenu from './components/UserMenu';
 import { supabase } from './lib/supabase';
 import { Submission } from './types';
@@ -14,16 +15,25 @@ import { TimerProvider, useTimer } from './contexts/TimerContext';
 function App() {
   const [streak, setStreak] = useState<number>(0);
   const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
+  const [showGoogleAuthPrompt, setShowGoogleAuthPrompt] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   const isConfigured = supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_project_url';
 
   useEffect(() => {
-    // Check if user has username
-    if (!hasUsername()) {
-      setShowUsernamePrompt(true);
+    // Check if user is fully authenticated (has both username and Google auth)
+    if (!isFullyAuthenticated()) {
+      // If user has username but no Google auth, show Google auth prompt
+      if (hasUsername() && !hasGoogleAuth()) {
+        setShowGoogleAuthPrompt(true);
+        setUsername(getUsername());
+      } else {
+        // Otherwise show username prompt (which will require Google auth first)
+        setShowUsernamePrompt(true);
+      }
     } else {
+      // User is fully authenticated
       setUsername(getUsername());
     }
 
@@ -146,13 +156,21 @@ function App() {
     setShowUsernamePrompt(false);
   };
 
+  const handleGoogleAuthComplete = () => {
+    setShowGoogleAuthPrompt(false);
+    // Refresh to update UI
+    window.location.reload();
+  };
+
   const handleLogout = () => {
     setUsername(null);
     setShowUsernamePrompt(true);
+    setShowGoogleAuthPrompt(false);
   };
 
   const handleChangeUsername = () => {
     setShowUsernamePrompt(true);
+    setShowGoogleAuthPrompt(false);
   };
 
   return (
@@ -160,7 +178,9 @@ function App() {
       <TimerProvider>
         <AppContent
           showUsernamePrompt={showUsernamePrompt}
+          showGoogleAuthPrompt={showGoogleAuthPrompt}
           handleUsernameComplete={handleUsernameComplete}
+          handleGoogleAuthComplete={handleGoogleAuthComplete}
           handleLogout={handleLogout}
           handleChangeUsername={handleChangeUsername}
           username={username}
@@ -173,14 +193,18 @@ function App() {
 
 function AppContent({
   showUsernamePrompt,
+  showGoogleAuthPrompt,
   handleUsernameComplete,
+  handleGoogleAuthComplete,
   handleLogout,
   handleChangeUsername,
   username,
   streak,
 }: {
   showUsernamePrompt: boolean;
+  showGoogleAuthPrompt: boolean;
   handleUsernameComplete: (username: string) => void;
+  handleGoogleAuthComplete: () => void;
   handleLogout: () => void;
   handleChangeUsername: () => void;
   username: string | null;
@@ -190,7 +214,10 @@ function AppContent({
 
   return (
     <>
-      {showUsernamePrompt && (
+      {showGoogleAuthPrompt && (
+        <GoogleAuthPrompt onComplete={handleGoogleAuthComplete} />
+      )}
+      {showUsernamePrompt && !showGoogleAuthPrompt && (
         <UsernamePrompt onComplete={handleUsernameComplete} />
       )}
       <div className="min-h-screen bg-gray-50">

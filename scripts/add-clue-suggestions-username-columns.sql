@@ -11,3 +11,4 @@ ADD COLUMN IF NOT EXISTS username TEXT;
 CREATE INDEX IF NOT EXISTS idx_clue_suggestions_username ON clue_suggestions(username);
 CREATE INDEX IF NOT EXISTS idx_clue_suggestions_anon_id ON clue_suggestions(anon_id);
 
+

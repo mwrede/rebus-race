@@ -10,3 +10,4 @@ SELECT
   COUNT(CASE WHEN opt_in_texts = false THEN 1 END) as opted_out
 FROM users;
 
+

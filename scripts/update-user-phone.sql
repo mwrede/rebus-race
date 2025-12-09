@@ -18,3 +18,4 @@ WHERE anon_id = 'ANON_ID_HERE';
 -- Bulk update phone numbers from a CSV (you'll need to import this differently)
 -- Or use this pattern for individual updates
 
+

@@ -52,3 +52,4 @@ EXECUTE FUNCTION update_user_ranks();
 
 COMMENT ON FUNCTION update_user_ranks() IS 'Automatically updates user ranks when submissions are created or updated';
 
+
