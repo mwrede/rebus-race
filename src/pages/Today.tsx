@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Puzzle, Submission } from '../types';
 import { incrementWin } from '../lib/stats';
@@ -46,6 +46,7 @@ function Today() {
   const [userHasEmail, setUserHasEmail] = useState(false);
   const [showPrivacyNote, setShowPrivacyNote] = useState(false);
   const { setTimerActive } = useTimer();
+  const navigate = useNavigate();
   const MAX_GUESSES = 5;
   const MAX_TIME_SECONDS = 300; // 5 minutes
   const HINT_PENALTY_SECONDS = 60; // 1 minute penalty for using hint
@@ -150,8 +151,41 @@ function Today() {
         setAnonId(id);
       }
       
-      // Load today's puzzle
-      loadTodayPuzzle();
+      // Check if we're returning from image reveal page
+      const fromReveal = new URLSearchParams(window.location.search).get('fromReveal') === 'true';
+      const pendingSubmission = sessionStorage.getItem('pending_submission');
+      const pendingPuzzleId = sessionStorage.getItem('pending_puzzle_id');
+      const pendingTimeMs = sessionStorage.getItem('pending_time_ms');
+      
+      if (fromReveal && pendingSubmission && pendingPuzzleId) {
+        // Restore submission state
+        const submission = JSON.parse(pendingSubmission);
+        setSubmission(submission);
+        setSubmitted(true);
+        setAlreadyPlayed(false); // This is a new submission, not already played
+        setTimerActive(false);
+        
+        // Clear sessionStorage
+        sessionStorage.removeItem('pending_submission');
+        sessionStorage.removeItem('pending_puzzle_id');
+        sessionStorage.removeItem('pending_time_ms');
+        
+        // Load puzzle first, then stats
+        loadTodayPuzzle().then(() => {
+          // Load stats after puzzle is loaded
+          if (submission.is_correct && pendingTimeMs) {
+            loadRankingAndPastResults(pendingPuzzleId, submission.id, parseInt(pendingTimeMs));
+            incrementWin(pendingPuzzleId);
+          }
+          loadAllTimeStats();
+          if (!submission.is_correct) {
+            loadIncorrectPercentage(pendingPuzzleId);
+          }
+        });
+      } else {
+        // Load today's puzzle
+        loadTodayPuzzle();
+      }
       checkUserEmail();
     };
     
@@ -244,6 +278,14 @@ function Today() {
                   .single();
 
                 if (error) throw error;
+
+                // Navigate to image reveal page with the last guess (or empty if no answer)
+                const lastGuess = answer.trim() || 'Time\'s Up!';
+                navigate(`/image_reveal?text=${encodeURIComponent(lastGuess)}&isCorrect=false`);
+                
+                // Store submission data in sessionStorage to restore after reveal
+                sessionStorage.setItem('pending_submission', JSON.stringify(data));
+                sessionStorage.setItem('pending_puzzle_id', puzzle.id);
 
                 setSubmission(data);
                 setSubmitted(true);
@@ -1229,6 +1271,14 @@ function Today() {
 
         if (error) throw error;
 
+        // Navigate to image reveal page with the answer
+        navigate(`/image_reveal?text=${encodeURIComponent(puzzle.answer)}&isCorrect=true`);
+        
+        // Store submission data in sessionStorage to restore after reveal
+        sessionStorage.setItem('pending_submission', JSON.stringify(data));
+        sessionStorage.setItem('pending_puzzle_id', puzzle.id);
+        sessionStorage.setItem('pending_time_ms', timeMs.toString());
+
         setSubmission(data);
         setSubmitted(true);
         setTimerActive(false); // Re-enable navigation after submission
@@ -1335,6 +1385,13 @@ function Today() {
             .single();
 
           if (error) throw error;
+
+          // Navigate to image reveal page with the last guess
+          navigate(`/image_reveal?text=${encodeURIComponent(currentAnswer)}&isCorrect=false`);
+          
+          // Store submission data in sessionStorage to restore after reveal
+          sessionStorage.setItem('pending_submission', JSON.stringify(data));
+          sessionStorage.setItem('pending_puzzle_id', puzzle.id);
 
           setSubmission(data);
           setSubmitted(true);

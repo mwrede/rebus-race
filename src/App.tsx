@@ -4,6 +4,7 @@ import Today from './pages/Today';
 import Leaderboard from './pages/Leaderboard';
 import Archive from './pages/Archive';
 import ArchiveDetail from './pages/ArchiveDetail';
+import ImageReveal from './pages/ImageReveal';
 import { getUsername, hasUsername, isFullyAuthenticated, hasGoogleAuth, getGoogleUser, setAnonId, setUsername as setUsernameInStorage, logout } from './lib/auth';
 import UsernamePrompt from './components/UsernamePrompt';
 import GoogleAuthPrompt from './components/GoogleAuthPrompt';
@@ -343,6 +344,7 @@ function AppContent({
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/archive" element={<Archive />} />
             <Route path="/archive/:id" element={<ArchiveDetail />} />
+            <Route path="/image_reveal" element={<ImageReveal />} />
           </Routes>
         </main>
       </div>
