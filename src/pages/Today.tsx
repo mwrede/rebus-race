@@ -5,7 +5,6 @@ import { Puzzle, Submission } from '../types';
 import { incrementWin } from '../lib/stats';
 import { getUsername, getGoogleUser } from '../lib/auth';
 import { useTimer } from '../contexts/TimerContext';
-import BouncingRevealImage from '../components/BouncingRevealImage';
 
 function Today() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
@@ -1458,11 +1457,6 @@ function Today() {
         {dateStr}
       </h1>
 
-      {/* Bouncing reveal image for 8 seconds */}
-      {(submitted || alreadyPlayed) && puzzle && (
-        <BouncingRevealImage date={puzzle.date} />
-      )}
-
       {/* Puzzle image on reveal/results page - only show for newly submitted, not already played */}
       {submitted && !alreadyPlayed && puzzle && (
         <div className="mb-3 sm:mb-4 md:mb-6">
@@ -2033,6 +2027,11 @@ function Today() {
             >
               {submission.is_correct ? '✓ Correct!' : '✗ Incorrect'}
             </div>
+            {submission.is_correct && puzzle?.answer && (
+              <div className="text-base sm:text-lg md:text-xl italic text-gray-700 mb-1 sm:mb-1.5">
+                {puzzle.answer}
+              </div>
+            )}
             <div className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 mb-1 sm:mb-1.5">
               {submission.is_correct
                 ? null
