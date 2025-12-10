@@ -15,10 +15,14 @@ function BouncingRevealImage({ date, onComplete }: BouncingRevealImageProps) {
   // Convert date from YYYY-MM-DD to DD.MM.YYYY format
   const formatDateForReveal = (dateStr: string): string => {
     const [year, month, day] = dateStr.split('-');
+    // Format: DD.MM.YYYY_reveal.png (e.g., 12.09.2025_reveal.png)
     return `${day}.${month}.${year}_reveal.png`;
   };
 
   const revealImageSrc = formatDateForReveal(date);
+  
+  // Log for debugging
+  console.log('Looking for reveal image:', revealImageSrc, 'for date:', date);
 
   useEffect(() => {
     // Hide after 8 seconds
@@ -129,8 +133,15 @@ function BouncingRevealImage({ date, onComplete }: BouncingRevealImageProps) {
         }}
         onError={() => {
           // If image doesn't exist, hide the component
-          console.log('Reveal image not found:', revealImageSrc);
-          setVisible(false);
+          console.log('Reveal image not found, trying without extension:', revealImageSrc);
+          // Try without .png extension
+          const withoutExt = revealImageSrc.replace('.png', '');
+          if (imageRef.current) {
+            imageRef.current.src = `/${withoutExt}`;
+          }
+        }}
+        onLoad={() => {
+          console.log('Reveal image loaded successfully:', revealImageSrc);
         }}
       />
     </div>
