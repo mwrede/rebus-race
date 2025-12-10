@@ -5,6 +5,7 @@ import { Puzzle, Submission } from '../types';
 import { incrementWin } from '../lib/stats';
 import { getUsername, getGoogleUser } from '../lib/auth';
 import { useTimer } from '../contexts/TimerContext';
+import BouncingImage from '../components/BouncingImage';
 
 function Today() {
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
@@ -1460,10 +1461,10 @@ function Today() {
       {/* Puzzle image on reveal/results page - only show for newly submitted, not already played */}
       {submitted && !alreadyPlayed && puzzle && (
         <div className="mb-3 sm:mb-4 md:mb-6">
-          <img
+          <BouncingImage
             src={puzzle.image_url}
             alt="Rebus puzzle"
-            className="w-full rounded-lg border-2 border-gray-200 max-h-[30vh] sm:max-h-[40vh] object-contain mx-auto"
+            className="rounded-lg border-2 border-gray-200"
           />
         </div>
       )}
@@ -1476,10 +1477,10 @@ function Today() {
                 You've already played today's puzzle
               </div>
               <div className="mb-2 sm:mb-3 md:mb-4">
-                <img
-                  src={puzzle?.image_url}
+                <BouncingImage
+                  src={puzzle?.image_url || ''}
                   alt="Rebus puzzle"
-                  className="w-full rounded-lg border-2 border-gray-300 opacity-60"
+                  className="rounded-lg border-2 border-gray-300 opacity-60"
                 />
               </div>
             </div>
