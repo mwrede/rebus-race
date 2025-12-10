@@ -193,6 +193,10 @@ function Today() {
               const timeMs = MAX_TIME_SECONDS * 1000; // 5 minutes in ms
 
               try {
+                // Get user's email from Google auth
+                const googleUser = getGoogleUser();
+                const userEmail = googleUser?.email || null;
+                
                 // Save all wrong guesses that were made before timeout
                 const username = getUsername();
                 for (let i = 0; i < wrongGuesses.length; i++) {
@@ -233,6 +237,7 @@ function Today() {
                     is_correct: false,
                     time_ms: timeMs,
                     username: username || null,
+                    email: userEmail,
                     guess_count: MAX_GUESSES,
                   })
                   .select()
@@ -330,16 +335,37 @@ function Today() {
         }
         
         if (anonId) {
-          const { data: existingSubmission, error: submissionError } = await supabase
-            .from('submissions')
-            .select('*')
-            .eq('puzzle_id', data.id)
-            .eq('anon_id', anonId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          // Get user's email for tracking
+          const googleUser = getGoogleUser();
+          const userEmail = googleUser?.email || null;
+          
+          // Check for existing submission by email first, then anon_id
+          let existingSubmission = null;
+          if (userEmail) {
+            const { data: emailSubmission } = await supabase
+              .from('submissions')
+              .select('*')
+              .eq('puzzle_id', data.id)
+              .eq('email', userEmail)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            existingSubmission = emailSubmission;
+          }
+          // Fallback to anon_id if no email or no submission found by email
+          if (!existingSubmission) {
+            const { data: anonSubmission } = await supabase
+              .from('submissions')
+              .select('*')
+              .eq('puzzle_id', data.id)
+              .eq('anon_id', anonId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            existingSubmission = anonSubmission;
+          }
 
-          if (existingSubmission && !submissionError) {
+          if (existingSubmission) {
             // Set all states IMMEDIATELY to prevent showing puzzle form
             setAlreadyPlayed(true);
             setPreviousSubmission(existingSubmission);
@@ -1106,6 +1132,10 @@ function Today() {
     // Set submitting state IMMEDIATELY to prevent double-clicks/race conditions
     setIsSubmitting(true);
 
+    // Get user's email from Google auth (available throughout this function)
+    const googleUser = getGoogleUser();
+    const userEmail = googleUser?.email || null;
+
     const isCorrect = answer.trim().toLowerCase() === puzzle.answer.toLowerCase();
     const currentAnswer = answer.trim();
     const currentGuessNumber = wrongGuesses.length + 1;
@@ -1132,14 +1162,29 @@ function Today() {
       }
 
       try {
-        // Check if user has already submitted for this puzzle (prevent duplicates)
-        const { data: existingSubmission } = await supabase
-          .from('submissions')
-          .select('id')
-          .eq('puzzle_id', puzzle.id)
-          .eq('anon_id', anonId)
-          .eq('is_correct', true)
-          .maybeSingle();
+        // Check if user has already submitted for this puzzle (prevent duplicates) - use email if available
+        let existingSubmission = null;
+        if (userEmail) {
+          const { data } = await supabase
+            .from('submissions')
+            .select('id')
+            .eq('puzzle_id', puzzle.id)
+            .eq('email', userEmail)
+            .eq('is_correct', true)
+            .maybeSingle();
+          existingSubmission = data;
+        }
+        // Fallback to anon_id if no email
+        if (!existingSubmission) {
+          const { data } = await supabase
+            .from('submissions')
+            .select('id')
+            .eq('puzzle_id', puzzle.id)
+            .eq('anon_id', anonId)
+            .eq('is_correct', true)
+            .maybeSingle();
+          existingSubmission = data;
+        }
 
         if (existingSubmission) {
           // Already submitted - don't create duplicate
@@ -1175,6 +1220,7 @@ function Today() {
             is_correct: true,
             time_ms: timeMs,
             username: username || null,
+            email: userEmail,
             guess_count: finalGuessCount,
             ...guessColumns,
           })
@@ -1227,13 +1273,27 @@ function Today() {
         }
 
         try {
-                // Check if user has already submitted for this puzzle (prevent duplicates)
-                const { data: existingSubmission } = await supabase
-                  .from('submissions')
-                  .select('id')
-                  .eq('puzzle_id', puzzle.id)
-                  .eq('anon_id', anonId)
-                  .maybeSingle();
+                // Check if user has already submitted for this puzzle (prevent duplicates) - use email if available
+                let existingSubmission = null;
+                if (userEmail) {
+                  const { data } = await supabase
+                    .from('submissions')
+                    .select('id')
+                    .eq('puzzle_id', puzzle.id)
+                    .eq('email', userEmail)
+                    .maybeSingle();
+                  existingSubmission = data;
+                }
+                // Fallback to anon_id if no email
+                if (!existingSubmission) {
+                  const { data } = await supabase
+                    .from('submissions')
+                    .select('id')
+                    .eq('puzzle_id', puzzle.id)
+                    .eq('anon_id', anonId)
+                    .maybeSingle();
+                  existingSubmission = data;
+                }
 
                 if (existingSubmission) {
                   // Already submitted - don't create duplicate
@@ -1267,6 +1327,7 @@ function Today() {
               is_correct: false,
               time_ms: timeMs,
               username: username || null,
+              email: userEmail,
               guess_count: newGuessCount,
               ...guessColumns,
             })
