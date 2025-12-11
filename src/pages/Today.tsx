@@ -171,20 +171,19 @@ function Today() {
         sessionStorage.removeItem('pending_time_ms');
         
         // Load puzzle first, then stats
-        loadTodayPuzzle().then(() => {
-          // Load stats after puzzle is loaded
-          if (submission.is_correct && pendingTimeMs) {
-            loadRankingAndPastResults(pendingPuzzleId, submission.id, parseInt(pendingTimeMs));
-            incrementWin(pendingPuzzleId);
-          }
-          loadAllTimeStats();
-          if (!submission.is_correct) {
-            loadIncorrectPercentage(pendingPuzzleId);
-          }
-        });
+        await loadTodayPuzzle();
+        // Load stats after puzzle is loaded
+        if (submission.is_correct && pendingTimeMs) {
+          await loadRankingAndPastResults(pendingPuzzleId, submission.id, parseInt(pendingTimeMs));
+          incrementWin(pendingPuzzleId);
+        }
+        await loadAllTimeStats();
+        if (!submission.is_correct) {
+          await loadIncorrectPercentage(pendingPuzzleId);
+        }
       } else {
         // Load today's puzzle
-        loadTodayPuzzle();
+        await loadTodayPuzzle();
       }
       checkUserEmail();
     };
@@ -334,12 +333,14 @@ function Today() {
 
   const loadTodayPuzzle = async () => {
     try {
+      setLoading(true);
       // Get today's date in local timezone (YYYY-MM-DD format)
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       const today = `${year}-${month}-${day}`;
+      console.log('Loading puzzle for date:', today);
       const { data, error } = await supabase
         .from('puzzles')
         .select('*')
@@ -347,10 +348,12 @@ function Today() {
         .single();
 
       if (error && error.code !== 'PGRST116') {
+        console.error('Error loading puzzle:', error);
         throw error;
       }
 
       if (data) {
+        console.log('Puzzle found:', data);
         setPuzzle(data);
         
         // Check if user has already played today
@@ -1649,7 +1652,7 @@ function Today() {
                     )}
 
                     {/* Buttons */}
-                    <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+                    <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 flex flex-row justify-center items-center gap-1.5 sm:gap-2 md:gap-3">
                       <button
                         onClick={() => {
                           if (previousSubmission) {
@@ -1666,21 +1669,21 @@ function Today() {
                             });
                           }
                         }}
-                        className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"
+                        className="inline-flex items-center gap-1 bg-green-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-green-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
                       >
-                        <span>📤</span> <span>Share Result</span>
+                        <span>📤</span> <span className="hidden sm:inline">Share Result</span>
                       </button>
                       <Link
                         to="/leaderboard"
-                        className="inline-flex items-center gap-1 sm:gap-2 bg-gray-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-gray-700 font-medium text-xs sm:text-sm md:text-base"
+                        className="inline-flex items-center gap-1 bg-gray-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-gray-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
                       >
-                        <span>🏆</span> <span>Go to Leaderboard</span>
+                        <span>🏆</span> <span className="hidden sm:inline">Leaderboard</span>
                       </Link>
                       <Link
                         to="/archive"
-                        className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+                        className="inline-flex items-center gap-1 bg-blue-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-blue-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
                       >
-                        <span>📚</span> <span>Play more</span>
+                        <span>📚</span> <span className="hidden sm:inline">Play more</span>
                       </Link>
                     </div>
                     {!rebusSubmitted && (
@@ -2264,24 +2267,24 @@ function Today() {
             )}
           </div>
           {submitted && submission && !submission.is_correct && !alreadyPlayed && (
-            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 flex flex-row justify-center items-center gap-1.5 sm:gap-2 md:gap-3">
               <button
                 onClick={handleShare}
-                className="inline-flex items-center gap-1 sm:gap-2 bg-red-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-red-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 bg-red-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-red-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
               >
-                <span>📤</span> <span>Share Result</span>
+                <span>📤</span> <span className="hidden sm:inline">Share Result</span>
               </button>
               <Link
                 to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-gray-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-gray-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 bg-gray-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-gray-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
               >
-                <span>🏆</span> <span>Go to Leaderboard</span>
+                <span>🏆</span> <span className="hidden sm:inline">Leaderboard</span>
               </Link>
               <Link
                 to="/archive"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 bg-blue-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-blue-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
               >
-                <span>📚</span> <span>Play more</span>
+                <span>📚</span> <span className="hidden sm:inline">Play more</span>
               </Link>
             </div>
           )}
@@ -2314,7 +2317,7 @@ function Today() {
             </div>
           )}
           {alreadyPlayed && previousSubmission && !previousSubmission.is_correct && (
-            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-300 flex flex-row justify-center items-center gap-1.5 sm:gap-2 md:gap-3">
               <button
                 onClick={() => {
                   if (previousSubmission) {
@@ -2331,21 +2334,21 @@ function Today() {
                     });
                   }
                 }}
-                className="inline-flex items-center gap-1 sm:gap-2 bg-red-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-red-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 bg-red-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-red-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
               >
-                <span>📤</span> <span>Share Result</span>
+                <span>📤</span> <span className="hidden sm:inline">Share Result</span>
               </button>
               <Link
                 to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-gray-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-gray-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 bg-gray-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-gray-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
               >
-                <span>🏆</span> <span>Go to Leaderboard</span>
+                <span>🏆</span> <span className="hidden sm:inline">Leaderboard</span>
               </Link>
               <Link
                 to="/archive"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 bg-blue-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-blue-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
               >
-                <span>📚</span> <span>Play more</span>
+                <span>📚</span> <span className="hidden sm:inline">Play more</span>
               </Link>
             </div>
           )}
@@ -2379,24 +2382,24 @@ function Today() {
           )}
           
           {submission.is_correct && !alreadyPlayed && (
-            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-200 text-center space-y-2 sm:space-y-0 sm:space-x-3 flex flex-col sm:flex-row justify-center items-center">
+            <div className="mt-2 sm:mt-3 md:mt-4 pt-2 sm:pt-3 md:pt-4 border-t border-gray-200 flex flex-row justify-center items-center gap-1.5 sm:gap-2 md:gap-3">
               <button
                 onClick={handleShare}
-                className="inline-flex items-center gap-1 sm:gap-2 bg-green-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-green-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 bg-green-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-green-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
               >
-                <span>📤</span> <span>Share Result</span>
+                <span>📤</span> <span className="hidden sm:inline">Share Result</span>
               </button>
               <Link
                 to="/leaderboard"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-gray-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-gray-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 bg-gray-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-gray-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
               >
-                <span>🏆</span> <span>Go to Leaderboard</span>
+                <span>🏆</span> <span className="hidden sm:inline">Leaderboard</span>
               </Link>
               <Link
                 to="/archive"
-                className="inline-flex items-center gap-1 sm:gap-2 bg-blue-600 text-white py-1.5 sm:py-2 px-4 sm:px-6 rounded-md hover:bg-blue-700 font-medium text-xs sm:text-sm md:text-base"
+                className="inline-flex items-center gap-1 bg-blue-600 text-white py-1.5 sm:py-2 px-2 sm:px-4 md:px-6 rounded-md hover:bg-blue-700 font-medium text-[10px] sm:text-xs md:text-sm flex-1 sm:flex-none"
               >
-                <span>📚</span> <span>Go to Archive</span>
+                <span>📚</span> <span className="hidden sm:inline">Play more</span>
               </Link>
             </div>
           )}
