@@ -57,8 +57,10 @@ async function seedPuzzles() {
   const files = readdirSync(publicDir);
   
   // Filter for .png files and parse them
+  // Skip files with "reveal" in the name as they're not actual puzzles
   const puzzles = files
     .filter(file => file.toLowerCase().endsWith('.png'))
+    .filter(file => !file.toLowerCase().includes('reveal'))
     .map(file => parsePuzzleFilename(file))
     .filter(puzzle => puzzle !== null)
     .sort((a, b) => a.date.localeCompare(b.date)); // Sort by date
