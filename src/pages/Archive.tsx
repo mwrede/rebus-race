@@ -115,29 +115,12 @@ function Archive() {
         .order('date', { ascending: false })
         .limit(100);
 
-      if (error) {
-        console.error('Error loading puzzles:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      // Filter to show puzzles from today and earlier (exclude future puzzles)
+      // Filter to only show puzzles with dates strictly before today
       const filteredPuzzles = (data || []).filter((puzzle: Puzzle) => {
-        // Skip puzzles without dates
-        if (!puzzle.date) return false;
-        
-        // Handle both date strings and date objects
-        let puzzleDateStr: string;
-        if (typeof puzzle.date === 'string') {
-          // Extract just the date part (YYYY-MM-DD) from string
-          puzzleDateStr = puzzle.date.split('T')[0].split(' ')[0];
-        } else {
-          // If it's a Date object, convert to string
-          const date = new Date(puzzle.date);
-          puzzleDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        }
-        // Compare dates as strings (works for ISO format YYYY-MM-DD)
-        // Show puzzles from today and earlier (exclude future dates)
-        return puzzleDateStr <= todayStr;
+        const puzzleDateStr = puzzle.date.split('T')[0];
+        return puzzleDateStr < todayStr;
       });
 
       // Get success rates, average times, and average guesses for each puzzle

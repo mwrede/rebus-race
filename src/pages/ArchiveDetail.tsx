@@ -914,7 +914,7 @@ function ArchiveDetail() {
             </div>
             <div className="mb-2 sm:mb-3">
               <img
-                src={puzzle.image_url}
+                src={encodeURI(puzzle.image_url)}
                 alt="Rebus puzzle"
                 className="w-full rounded-lg border-2 border-gray-300 opacity-60"
               />
@@ -1129,7 +1129,7 @@ function ArchiveDetail() {
 
               <div className="mb-1 sm:mb-1.5">
                 <img
-                  src={puzzle.image_url}
+                  src={encodeURI(puzzle.image_url)}
                   alt="Rebus puzzle"
                   className="w-full rounded-lg border-2 border-gray-200 max-h-[25vh] sm:max-h-[30vh] object-contain"
                 />
